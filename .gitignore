@@ -1,0 +1,10 @@
+node_modules
+dist
+out
+.DS_Store
+.eslintcache
+*.log*
+.superpowers/
+.claude/skills/
+.codex/skills/
+.gemini/skills/

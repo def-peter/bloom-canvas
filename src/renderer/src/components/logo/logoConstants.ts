@@ -38,7 +38,7 @@ export const logoStyleDirectionOptions = [
   { label: '高端克制', value: 'premium-restraint' }
 ] as const
 
-export const defaultLogoStyleDirections = ['modern-minimal', 'symbolic-mark', 'wordmark'] as const
+export const defaultLogoStyleDirections = ['modern-minimal', 'symbolic-mark'] as const
 
 export const logoUsageScenarioOptions = [
   { label: 'App 图标', value: 'app-icon' },

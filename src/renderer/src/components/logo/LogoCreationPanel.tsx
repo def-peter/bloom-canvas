@@ -5,6 +5,7 @@ import {
   Form,
   Input,
   InputNumber,
+  Radio,
   Select,
   Space,
   Tooltip,
@@ -59,7 +60,7 @@ interface LogoCreationFormValues {
   avoidElements?: string
   preferredColorsInput?: string
   avoidedColorsInput?: string
-  logoTypes: LogoType[]
+  logoType: LogoType
   styleDirections: LogoStyleDirectionId[]
   usageScenarios: LogoUsageScenario[]
   referenceNote?: string
@@ -123,8 +124,8 @@ function createInitialValues(
     avoidElements: project?.avoidElements,
     preferredColorsInput: joinInput(project?.preferredColors),
     avoidedColorsInput: joinInput(project?.avoidedColors),
-    logoTypes: project?.logoTypes ?? ['combination-mark'],
-    styleDirections: project?.styleDirections ?? [...defaultLogoStyleDirections],
+    logoType: project?.logoTypes[0] ?? 'combination-mark',
+    styleDirections: project?.styleDirections?.slice(0, 3) ?? [...defaultLogoStyleDirections],
     usageScenarios: project?.usageScenarios ?? ['app-icon', 'website'],
     referenceNote: project?.referenceNote,
     promptPack: project?.promptPack,
@@ -155,7 +156,7 @@ function toProjectInput(
     avoidElements: values.avoidElements,
     preferredColors: splitInput(values.preferredColorsInput),
     avoidedColors: splitInput(values.avoidedColorsInput),
-    logoTypes: values.logoTypes,
+    logoTypes: [values.logoType],
     styleDirections: values.styleDirections,
     usageScenarios: values.usageScenarios ?? [],
     referenceImageIds: referenceAssets.map((asset) => asset.id),
@@ -197,7 +198,12 @@ export function LogoCreationPanel({
   }
 
   async function buildPromptPack(): Promise<void> {
-    const values = await form.validateFields()
+    let values: LogoCreationFormValues
+    try {
+      values = await form.validateFields()
+    } catch {
+      return
+    }
     setBuildingPrompt(true)
     try {
       await buildPromptPackFromValues(values)
@@ -215,7 +221,12 @@ export function LogoCreationPanel({
       return
     }
 
-    const values = await form.validateFields()
+    let values: LogoCreationFormValues
+    try {
+      values = await form.validateFields()
+    } catch {
+      return
+    }
     const confirmedPromptPack =
       values.promptPack ?? promptPack ?? (await buildPromptPackFromValues(values))
     const savedProject = await bloomCanvasClient.logoProjects.save(
@@ -243,7 +254,7 @@ export function LogoCreationPanel({
             logoProjectId: savedProject.id,
             styleDirectionId: direction.id,
             styleDirectionName: direction.name,
-            logoTypes: values.logoTypes,
+            logoTypes: [values.logoType],
             promptPackSnapshot: confirmedPromptPack,
             finalPrompt: direction.finalPrompt,
             briefSnapshot: {
@@ -336,10 +347,10 @@ export function LogoCreationPanel({
         <Typography.Text strong>Logo 方向</Typography.Text>
         <Form.Item
           label="Logo 类型"
-          name="logoTypes"
+          name="logoType"
           rules={[{ required: true, message: '请选择 Logo 类型' }]}
         >
-          <Checkbox.Group options={buildCheckboxOptions(logoTypeOptions)} />
+          <Radio.Group options={buildCheckboxOptions(logoTypeOptions)} />
         </Form.Item>
         <Form.Item
           label="风格方向"
@@ -348,7 +359,7 @@ export function LogoCreationPanel({
             { required: true, message: '请选择风格方向' },
             {
               validator: async (_, value: LogoStyleDirectionId[] | undefined) => {
-                if (value && value.length > 4) throw new Error('最多选择 4 个风格方向')
+                if (value && value.length > 3) throw new Error('最多选择 3 个风格方向')
               }
             }
           ]}

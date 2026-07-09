@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { App } from 'antd'
-import { describe, expect, test, vi } from 'vitest'
-import type { ProviderConfig } from '../../../../shared/types'
+import type { ComponentProps } from 'react'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
+import type { LogoProject, ProviderConfig } from '../../../../shared/types'
+import { bloomCanvasClient } from '../../api/bloomCanvasClient'
 import { LogoCreationPanel } from './LogoCreationPanel'
 
 vi.mock('../../api/bloomCanvasClient', () => ({
@@ -39,24 +41,51 @@ const provider: ProviderConfig = {
   updatedAt: '2026-07-09T00:00:00.000Z'
 }
 
+const existingProject: LogoProject = {
+  id: 'project-1',
+  brandName: '生花',
+  industry: 'AI 绘图软件',
+  businessDescription: '帮助创作者生成图片',
+  brandKeywords: ['清晰'],
+  preferredColors: [],
+  avoidedColors: [],
+  logoTypes: ['combination-mark'],
+  styleDirections: ['modern-minimal', 'symbolic-mark', 'wordmark'],
+  usageScenarios: ['app-icon'],
+  referenceImageIds: [],
+  generationIds: [],
+  favoriteVariantIds: [],
+  createdAt: '2026-07-09T00:00:00.000Z',
+  updatedAt: '2026-07-09T00:00:00.000Z'
+}
+
+function renderPanel(overrides?: Partial<ComponentProps<typeof LogoCreationPanel>>): void {
+  render(
+    <App>
+      <LogoCreationPanel
+        activeProvider={provider}
+        project={null}
+        referenceAssets={[]}
+        settings={null}
+        onCreated={vi.fn()}
+        onError={vi.fn()}
+        onGeneratingChange={vi.fn()}
+        onNeedProvider={vi.fn()}
+        onProjectSaved={vi.fn()}
+        onReferenceAssetsChange={vi.fn()}
+        {...overrides}
+      />
+    </App>
+  )
+}
+
 describe('LogoCreationPanel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   test('explains logo type choices in plain language', () => {
-    render(
-      <App>
-        <LogoCreationPanel
-          activeProvider={provider}
-          project={null}
-          referenceAssets={[]}
-          settings={null}
-          onCreated={vi.fn()}
-          onError={vi.fn()}
-          onGeneratingChange={vi.fn()}
-          onNeedProvider={vi.fn()}
-          onProjectSaved={vi.fn()}
-          onReferenceAssetsChange={vi.fn()}
-        />
-      </App>
-    )
+    renderPanel()
 
     expect(screen.getByText('图标 + 品牌名')).toBeInTheDocument()
     expect(screen.getByText('品牌全名文字')).toBeInTheDocument()
@@ -67,22 +96,7 @@ describe('LogoCreationPanel', () => {
   })
 
   test('builds a prompt pack before image generation', async () => {
-    render(
-      <App>
-        <LogoCreationPanel
-          activeProvider={provider}
-          project={null}
-          referenceAssets={[]}
-          settings={null}
-          onCreated={vi.fn()}
-          onError={vi.fn()}
-          onGeneratingChange={vi.fn()}
-          onNeedProvider={vi.fn()}
-          onProjectSaved={vi.fn()}
-          onReferenceAssetsChange={vi.fn()}
-        />
-      </App>
-    )
+    renderPanel()
 
     fireEvent.change(screen.getByLabelText('品牌名'), { target: { value: '生花' } })
     fireEvent.change(screen.getByLabelText('行业'), { target: { value: 'AI 绘图软件' } })
@@ -94,5 +108,33 @@ describe('LogoCreationPanel', () => {
 
     await waitFor(() => expect(screen.getByText('提示词预览')).toBeInTheDocument())
     expect(screen.getAllByDisplayValue(/base prompt/)).not.toHaveLength(0)
+  })
+
+  test('saves one primary logo type from the selected radio choice', async () => {
+    const save = vi.mocked(bloomCanvasClient.logoProjects.save)
+    renderPanel()
+
+    fireEvent.change(screen.getByLabelText('品牌名'), { target: { value: '生花' } })
+    fireEvent.change(screen.getByLabelText('行业'), { target: { value: 'AI 绘图软件' } })
+    fireEvent.change(screen.getByLabelText('业务描述'), {
+      target: { value: '帮助创作者生成图片' }
+    })
+    fireEvent.change(screen.getByLabelText('品牌关键词'), { target: { value: '清晰' } })
+    fireEvent.click(screen.getByText('纯图形图标'))
+    fireEvent.click(screen.getByText('生成 Logo 初稿'))
+
+    await waitFor(() => expect(save).toHaveBeenCalled())
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ logoTypes: ['symbol-mark'] }))
+  })
+
+  test('blocks more than three style directions', async () => {
+    const save = vi.mocked(bloomCanvasClient.logoProjects.save)
+    renderPanel({ project: existingProject })
+
+    fireEvent.click(screen.getByText('科技感'))
+    fireEvent.click(screen.getByText('生成 Logo 初稿'))
+
+    await waitFor(() => expect(screen.getByText('最多选择 3 个风格方向')).toBeInTheDocument())
+    expect(save).not.toHaveBeenCalled()
   })
 })

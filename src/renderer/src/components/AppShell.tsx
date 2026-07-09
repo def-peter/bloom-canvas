@@ -20,6 +20,7 @@ import { GalleryPanel } from './GalleryPanel'
 import { HistoryPanel } from './HistoryPanel'
 import { LogoCreationPanel } from './logo/LogoCreationPanel'
 import { LogoProjectPanel } from './logo/LogoProjectPanel'
+import { LogoResultsPanel } from './logo/LogoResultsPanel'
 import { ProviderSettingsModal } from './ProviderSettingsModal'
 
 const { Header } = Layout
@@ -177,9 +178,14 @@ function WorkbenchShell(): React.JSX.Element {
             onCreateNew={() => selectLogoProject(null)}
             onSelect={selectLogoProject}
           />
-          <main className="gallery-panel">
-            <Typography.Text strong>Logo 结果</Typography.Text>
-          </main>
+          <LogoResultsPanel
+            generating={generating}
+            generations={generations}
+            selectedProjectId={selectedLogoProject?.id ?? null}
+            onContinueEdit={handleContinueEdit}
+            onExport={handleExport}
+            onRetry={handleRetry}
+          />
           <LogoCreationPanel
             activeProvider={activeProvider}
             project={selectedLogoProject}

@@ -1,10 +1,12 @@
 import { dialog, ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../shared/ipc'
 import {
+  buildLogoPromptPackSchema,
   createGenerationSchema,
   exportAssetSchema,
   importAssetSchema,
   promptOptimizeSchema,
+  saveLogoProjectSchema,
   saveProviderSchema
 } from '../../shared/schemas'
 import type { AppErrorPayload, AppResult, AppSettings } from '../../shared/types'
@@ -12,6 +14,8 @@ import { getAppPaths } from '../services/appPaths'
 import { AssetService } from '../services/assetService'
 import { CredentialService } from '../services/credentialService'
 import { GenerationService } from '../services/generationService'
+import { buildLogoPromptPack } from '../services/logoPromptCompiler'
+import { LogoProjectService } from '../services/logoProjectService'
 import { OpenAICompatibleProvider } from '../services/openAICompatibleProvider'
 import { PromptOptimizeService } from '../services/promptOptimizeService'
 import { ProviderConfigService } from '../services/providerConfigService'
@@ -46,6 +50,7 @@ export function registerIpcHandlers(): void {
   const assets = new AssetService(paths, storage)
   const imageProvider = new OpenAICompatibleProvider()
   const generations = new GenerationService(storage, providers, imageProvider, assets)
+  const logoProjects = new LogoProjectService(storage)
   const promptOptimizer = new PromptOptimizeService()
 
   ipcMain.handle(IPC_CHANNELS.providerList, async () => ok(await providers.list()))
@@ -99,7 +104,11 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.generationCreate, async (_event, input) => {
     try {
-      return ok(await generations.create(createGenerationSchema.parse(input)))
+      const record = await generations.create(createGenerationSchema.parse(input))
+      if (record.scenario === 'logo-design' && record.projectId) {
+        await logoProjects.appendGeneration(record.projectId, record.id)
+      }
+      return ok(record)
     } catch (error) {
       return err(toErrorPayload(error))
     }
@@ -133,6 +142,32 @@ export function registerIpcHandlers(): void {
       const apiKey = await providers.getApiKey(provider.id)
       if (!apiKey) throw new Error('Provider API key is missing')
       return ok(await promptOptimizer.optimize(provider, apiKey, parsed.prompt))
+    } catch (error) {
+      return err(toErrorPayload(error))
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.logoProjectList, async () => ok(await logoProjects.list()))
+
+  ipcMain.handle(IPC_CHANNELS.logoProjectGet, async (_event, id: string) => {
+    try {
+      return ok(await logoProjects.get(id))
+    } catch (error) {
+      return err(toErrorPayload(error))
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.logoProjectSave, async (_event, input) => {
+    try {
+      return ok(await logoProjects.save(saveLogoProjectSchema.parse(input)))
+    } catch (error) {
+      return err(toErrorPayload(error))
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.logoPromptBuild, async (_event, input) => {
+    try {
+      return ok(buildLogoPromptPack(buildLogoPromptPackSchema.parse(input)))
     } catch (error) {
       return err(toErrorPayload(error))
     }

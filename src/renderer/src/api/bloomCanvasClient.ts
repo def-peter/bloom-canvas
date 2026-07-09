@@ -47,5 +47,15 @@ export const bloomCanvasClient = {
   prompt: {
     optimize: (input: Parameters<typeof window.bloomCanvas.prompt.optimize>[0]) =>
       unwrapResult(window.bloomCanvas.prompt.optimize(input))
+  },
+  logoProjects: {
+    list: () => unwrapResult(window.bloomCanvas.logoProjects.list()),
+    save: (input: Parameters<typeof window.bloomCanvas.logoProjects.save>[0]) =>
+      unwrapResult(window.bloomCanvas.logoProjects.save(input)),
+    get: (id: string) => unwrapResult(window.bloomCanvas.logoProjects.get(id))
+  },
+  logoPrompt: {
+    build: (input: Parameters<typeof window.bloomCanvas.logoPrompt.build>[0]) =>
+      unwrapResult(window.bloomCanvas.logoPrompt.build(input))
   }
 }

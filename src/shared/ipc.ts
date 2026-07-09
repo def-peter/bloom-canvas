@@ -2,12 +2,17 @@ import type {
   AppResult,
   AppSettings,
   Asset,
+  BuildLogoPromptPackInput,
   CreateGenerationInput,
   ExportAssetInput,
   GenerationRecord,
   ImportAssetInput,
+  LogoProject,
+  LogoProjectId,
+  LogoPromptPack,
   PromptOptimizeInput,
   ProviderConfig,
+  SaveLogoProjectInput,
   SaveProviderInput
 } from './types'
 
@@ -23,7 +28,11 @@ export const IPC_CHANNELS = {
   generationList: 'generation:list',
   generationFavorite: 'generation:favorite',
   generationRetry: 'generation:retry',
-  promptOptimize: 'prompt:optimize'
+  promptOptimize: 'prompt:optimize',
+  logoProjectList: 'logoProject:list',
+  logoProjectSave: 'logoProject:save',
+  logoProjectGet: 'logoProject:get',
+  logoPromptBuild: 'logoPrompt:build'
 } as const
 
 export interface BloomCanvasApi {
@@ -49,5 +58,13 @@ export interface BloomCanvasApi {
   }
   prompt: {
     optimize: (input: PromptOptimizeInput) => Promise<AppResult<string>>
+  }
+  logoProjects: {
+    list: () => Promise<AppResult<LogoProject[]>>
+    save: (input: SaveLogoProjectInput) => Promise<AppResult<LogoProject>>
+    get: (id: LogoProjectId) => Promise<AppResult<LogoProject>>
+  }
+  logoPrompt: {
+    build: (input: BuildLogoPromptPackInput) => Promise<AppResult<LogoPromptPack>>
   }
 }

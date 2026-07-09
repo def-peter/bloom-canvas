@@ -101,6 +101,14 @@ function installBloomCanvasApi(overrides: Partial<BloomCanvasApi> = {}): BloomCa
     prompt: {
       optimize: vi.fn()
     },
+    logoProjects: {
+      list: vi.fn().mockResolvedValue({ ok: true, data: [] }),
+      save: vi.fn(),
+      get: vi.fn()
+    },
+    logoPrompt: {
+      build: vi.fn()
+    },
     ...overrides
   }
 

@@ -1,6 +1,13 @@
 import { mkdir, readFile, rename, writeFile } from 'fs/promises'
 import { dirname } from 'path'
-import type { AppSettings, Asset, Generation, ProviderConfig, Variant } from '../../shared/types'
+import type {
+  AppSettings,
+  Asset,
+  Generation,
+  LogoProject,
+  ProviderConfig,
+  Variant
+} from '../../shared/types'
 import type { AppPaths } from './appPaths'
 
 export interface MetadataState {
@@ -9,6 +16,7 @@ export interface MetadataState {
   assets: Asset[]
   generations: Generation[]
   variants: Variant[]
+  logoProjects: LogoProject[]
 }
 
 export const defaultSettings: AppSettings = {
@@ -43,7 +51,8 @@ export class StorageService {
         settings: { ...defaultSettings, ...parsed.settings },
         assets: parsed.assets ?? [],
         generations: parsed.generations ?? [],
-        variants: parsed.variants ?? []
+        variants: parsed.variants ?? [],
+        logoProjects: parsed.logoProjects ?? []
       }
     } catch {
       return this.emptyState()
@@ -88,7 +97,8 @@ export class StorageService {
       settings: defaultSettings,
       assets: [],
       generations: [],
-      variants: []
+      variants: [],
+      logoProjects: []
     }
   }
 }

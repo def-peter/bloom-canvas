@@ -18,6 +18,7 @@ import { CreationPanel } from './CreationPanel'
 import { ErrorNotice } from './ErrorNotice'
 import { GalleryPanel } from './GalleryPanel'
 import { HistoryPanel } from './HistoryPanel'
+import { LogoProjectPanel } from './logo/LogoProjectPanel'
 import { ProviderSettingsModal } from './ProviderSettingsModal'
 
 const { Header } = Layout
@@ -30,12 +31,15 @@ function WorkbenchShell(): React.JSX.Element {
     settings,
     generations,
     selectedGeneration,
+    logoProjects,
+    selectedLogoProject,
     loading,
     generating,
     error,
     refresh,
     setActiveScene,
     selectGeneration,
+    selectLogoProject,
     setGenerating,
     setError
   } = useWorkbenchStore()
@@ -160,11 +164,12 @@ function WorkbenchShell(): React.JSX.Element {
         </div>
       ) : (
         <div className="workspace-grid logo-workspace-grid">
-          <aside className="history-panel">
-            <div className="panel-header">
-              <Typography.Text strong>Logo 项目</Typography.Text>
-            </div>
-          </aside>
+          <LogoProjectPanel
+            projects={logoProjects}
+            selectedId={selectedLogoProject?.id ?? null}
+            onCreateNew={() => selectLogoProject(null)}
+            onSelect={selectLogoProject}
+          />
           <main className="gallery-panel">
             <Typography.Text strong>Logo 结果</Typography.Text>
           </main>

@@ -49,6 +49,9 @@ export class GenerationService {
     const generation: Generation = {
       id: generationId,
       mode: referenceAssets.length > 0 ? 'image-to-image' : 'text-to-image',
+      scenario: input.scenario ?? 'general',
+      projectId: input.projectId,
+      scenarioMetadata: input.scenarioMetadata,
       promptOriginal: input.prompt,
       promptOptimized: input.optimizedPrompt,
       promptFinal,
@@ -156,12 +159,15 @@ export class GenerationService {
     }
 
     return this.create({
-      prompt: generation.promptOriginal,
-      useOptimizedPrompt: Boolean(generation.promptOptimized),
-      optimizedPrompt: generation.promptOptimized,
+      prompt: generation.promptFinal,
+      useOptimizedPrompt: false,
+      optimizedPrompt: undefined,
       referenceAssetIds: generation.referenceImageIds,
       parameters: generation.parameters,
-      providerId: generation.providerId
+      providerId: generation.providerId,
+      scenario: generation.scenario,
+      projectId: generation.projectId,
+      scenarioMetadata: generation.scenarioMetadata
     })
   }
 

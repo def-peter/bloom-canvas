@@ -26,6 +26,7 @@ import type {
   SaveLogoProjectInput
 } from '../../../../shared/types'
 import { bloomCanvasClient } from '../../api/bloomCanvasClient'
+import { assertGenerationSucceeded } from '../../utils/generationStatus'
 import {
   defaultLogoStyleDirections,
   logoStyleDirectionOptions,
@@ -276,6 +277,7 @@ export function LogoCreationPanel({
             qualityRulesVersion: 1
           }
         })
+        assertGenerationSucceeded(record)
         await onCreated(record)
       }
       onError(null)

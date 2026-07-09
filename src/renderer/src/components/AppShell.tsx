@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { bloomCanvasClient } from '../api/bloomCanvasClient'
 import { useWorkbenchStore } from '../state/workbenchStore'
 import { bloomTheme } from '../theme'
+import { assertGenerationSucceeded } from '../utils/generationStatus'
 import type { Asset, GenerationRecord } from '../../../shared/types'
 import { CreationPanel } from './CreationPanel'
 import { ErrorNotice } from './ErrorNotice'
@@ -82,6 +83,7 @@ function WorkbenchShell(): React.JSX.Element {
     setGenerating(true)
     try {
       const record = await bloomCanvasClient.generations.retry(generationId)
+      assertGenerationSucceeded(record)
       await refresh()
       selectGeneration(record)
     } catch (retryError) {

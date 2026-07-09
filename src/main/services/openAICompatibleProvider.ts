@@ -19,11 +19,22 @@ export class OpenAICompatibleProvider {
   async generateImages(request: GenerateImageRequest): Promise<GeneratedImage[]> {
     const endpoint = request.references.length > 0 ? 'images/edits' : 'images/generations'
     const url = `${request.provider.baseUrl.replace(/\/+$/, '')}/${endpoint}`
-    const response =
-      request.references.length > 0
-        ? await this.postImageEdit(url, request)
-        : await this.postTextToImage(url, request)
+    const results: GeneratedImage[] = []
+    const requestCount = Math.max(1, request.parameters.count)
 
+    for (let index = 0; index < requestCount; index += 1) {
+      const response =
+        request.references.length > 0
+          ? await this.postImageEdit(url, request)
+          : await this.postTextToImage(url, request)
+
+      results.push(...(await this.parseImageResponse(response)))
+    }
+
+    return results
+  }
+
+  private async parseImageResponse(response: Response): Promise<GeneratedImage[]> {
     if (!response.ok) {
       const text = await response.text()
       throw new Error(`Provider request failed: ${response.status} ${text}`)
@@ -60,7 +71,6 @@ export class OpenAICompatibleProvider {
         model: request.provider.imageModel,
         prompt: request.prompt,
         size: request.parameters.size,
-        n: request.parameters.count,
         quality: request.parameters.quality,
         response_format: 'b64_json',
         output_format: request.parameters.outputFormat
@@ -73,7 +83,6 @@ export class OpenAICompatibleProvider {
     form.set('model', request.provider.imageModel)
     form.set('prompt', request.prompt)
     form.set('size', request.parameters.size)
-    form.set('n', String(request.parameters.count))
     form.set('quality', request.parameters.quality)
     form.set('response_format', 'b64_json')
     form.set('output_format', request.parameters.outputFormat)

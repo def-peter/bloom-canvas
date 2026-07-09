@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { App } from 'antd'
 import type { ComponentProps } from 'react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
-import type { LogoProject, ProviderConfig } from '../../../../shared/types'
+import type { GenerationRecord, LogoProject, ProviderConfig } from '../../../../shared/types'
 import { bloomCanvasClient } from '../../api/bloomCanvasClient'
 import { LogoCreationPanel } from './LogoCreationPanel'
 
@@ -57,6 +57,31 @@ const existingProject: LogoProject = {
   favoriteVariantIds: [],
   createdAt: '2026-07-09T00:00:00.000Z',
   updatedAt: '2026-07-09T00:00:00.000Z'
+}
+
+const failedLogoRecord: GenerationRecord = {
+  id: 'generation-1',
+  mode: 'text-to-image',
+  scenario: 'logo-design',
+  projectId: 'project-1',
+  promptOriginal: 'base prompt\nmodern prompt',
+  promptFinal: 'base prompt\nmodern prompt',
+  referenceImageIds: [],
+  parameters: {
+    size: '1024x1024',
+    count: 1,
+    quality: 'standard',
+    outputFormat: 'png'
+  },
+  outputVariantIds: [],
+  providerId: provider.id,
+  status: 'failed',
+  favorite: false,
+  errorMessage: "Provider request failed: Unknown parameter: 'tools[0].n'",
+  createdAt: '2026-07-09T00:00:00.000Z',
+  updatedAt: '2026-07-09T00:00:00.000Z',
+  references: [],
+  variants: []
 }
 
 function renderPanel(overrides?: Partial<ComponentProps<typeof LogoCreationPanel>>): void {
@@ -136,5 +161,23 @@ describe('LogoCreationPanel', () => {
 
     await waitFor(() => expect(screen.getByText('最多选择 3 个风格方向')).toBeInTheDocument())
     expect(save).not.toHaveBeenCalled()
+  })
+
+  test('reports failed logo generations instead of treating gray placeholders as results', async () => {
+    vi.mocked(bloomCanvasClient.generations.create).mockResolvedValue(failedLogoRecord)
+    const onCreated = vi.fn()
+    const onError = vi.fn()
+    renderPanel({ onCreated, onError })
+
+    fireEvent.change(screen.getByLabelText('品牌名'), { target: { value: '生花' } })
+    fireEvent.change(screen.getByLabelText('行业'), { target: { value: 'AI 绘图软件' } })
+    fireEvent.change(screen.getByLabelText('业务描述'), {
+      target: { value: '帮助创作者生成图片' }
+    })
+    fireEvent.change(screen.getByLabelText('品牌关键词'), { target: { value: '清晰' } })
+    fireEvent.click(screen.getByText('生成 Logo 初稿'))
+
+    await waitFor(() => expect(onError).toHaveBeenCalledWith(failedLogoRecord.errorMessage))
+    expect(onCreated).not.toHaveBeenCalled()
   })
 })

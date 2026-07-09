@@ -53,6 +53,51 @@ describe('OpenAICompatibleProvider', () => {
     expect(result[0].buffer.toString()).toBe('image-bytes')
   })
 
+  it('omits n for single-image requests for Responses-compatible image tools', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [{ b64_json: Buffer.from('image-bytes').toString('base64') }]
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await new OpenAICompatibleProvider().generateImages(createRequest())
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as Record<string, unknown>
+    expect(body).not.toHaveProperty('n')
+  })
+
+  it('creates multiple images with repeated single-image requests instead of n', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [{ b64_json: Buffer.from('first-image').toString('base64') }]
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: [{ b64_json: Buffer.from('second-image').toString('base64') }]
+        })
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await new OpenAICompatibleProvider().generateImages({
+      ...createRequest(),
+      parameters: { ...createRequest().parameters, count: 2 }
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls.map((call) => JSON.parse(call[1].body as string))).toEqual([
+      expect.not.objectContaining({ n: expect.anything() }),
+      expect.not.objectContaining({ n: expect.anything() })
+    ])
+    expect(result.map((item) => item.buffer.toString())).toEqual(['first-image', 'second-image'])
+  })
+
   it('surfaces provider errors with the response body', async () => {
     vi.stubGlobal(
       'fetch',

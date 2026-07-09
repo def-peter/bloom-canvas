@@ -10,6 +10,7 @@ import type {
   ProviderConfig
 } from '../../../shared/types'
 import { bloomCanvasClient } from '../api/bloomCanvasClient'
+import { assertGenerationSucceeded } from '../utils/generationStatus'
 
 interface CreationPanelProps {
   activeProvider: ProviderConfig | null
@@ -108,6 +109,7 @@ export function CreationPanel({
           outputFormat: values.outputFormat
         }
       })
+      assertGenerationSucceeded(record)
       await onCreated(record)
       onError(null)
     } catch (error) {

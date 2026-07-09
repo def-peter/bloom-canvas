@@ -130,6 +130,8 @@ body {
   width: 48px;
   height: 48px;
   flex: 0 0 48px;
+  display: grid;
+  place-items: center;
   overflow: hidden;
   border-radius: 6px;
   background: #f0f0f0;
@@ -140,6 +142,11 @@ body {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.history-failed-icon {
+  color: #ff4d4f;
+  font-size: 20px;
 }
 
 .history-content {

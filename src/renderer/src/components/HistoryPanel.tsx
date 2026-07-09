@@ -1,4 +1,9 @@
-import { ClockCircleOutlined, StarFilled, StarOutlined } from '@ant-design/icons'
+import {
+  ClockCircleOutlined,
+  CloseCircleOutlined,
+  StarFilled,
+  StarOutlined
+} from '@ant-design/icons'
 import { Button, Empty, Input, List, Segmented, Space, Typography } from 'antd'
 import { useMemo, useState } from 'react'
 import { thumbnailProtocolUrl } from '../../../shared/assetProtocol'
@@ -63,7 +68,9 @@ export function HistoryPanel({
               onClick={() => onSelect(generation)}
             >
               <div className="history-thumb">
-                {generation.variants[0]?.asset.thumbnailPath ? (
+                {generation.status === 'failed' ? (
+                  <CloseCircleOutlined aria-label="生成失败" className="history-failed-icon" />
+                ) : generation.variants[0]?.asset.thumbnailPath ? (
                   <img alt="" src={thumbnailProtocolUrl(generation.variants[0].assetId)} />
                 ) : (
                   <span />
@@ -72,7 +79,9 @@ export function HistoryPanel({
               <div className="history-content">
                 <Typography.Text ellipsis>{generation.promptFinal}</Typography.Text>
                 <Typography.Text type="secondary">
-                  {new Date(generation.createdAt).toLocaleString()}
+                  {generation.status === 'failed'
+                    ? `生成失败：${generation.errorMessage ?? '未知错误'}`
+                    : new Date(generation.createdAt).toLocaleString()}
                 </Typography.Text>
               </div>
               <Button

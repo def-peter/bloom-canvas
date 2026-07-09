@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BloomCanvasApi } from '../../../shared/ipc'
-import type { GenerationRecord, ProviderConfig } from '../../../shared/types'
+import type { GenerationRecord, LogoProject, ProviderConfig } from '../../../shared/types'
 import { AppShell } from './AppShell'
 
 const provider: ProviderConfig = {
@@ -60,6 +60,65 @@ const generatedRecordWithVariant: GenerationRecord = {
         sha256: 'hash',
         createdAt: generatedRecord.createdAt,
         sourceGenerationId: generatedRecord.id
+      }
+    }
+  ]
+}
+
+const logoProject: LogoProject = {
+  id: 'project-1',
+  brandName: '生花',
+  industry: 'AI 绘图软件',
+  businessDescription: '帮助创作者生成图片',
+  brandKeywords: ['清晰'],
+  preferredColors: [],
+  avoidedColors: [],
+  logoTypes: ['combination-mark'],
+  styleDirections: ['modern-minimal'],
+  usageScenarios: ['app-icon'],
+  referenceImageIds: [],
+  generationIds: ['logo-generation-1'],
+  favoriteVariantIds: [],
+  createdAt: '2026-07-09T00:00:00.000Z',
+  updatedAt: '2026-07-09T00:00:00.000Z'
+}
+
+const logoGeneratedRecordWithVariant: GenerationRecord = {
+  ...generatedRecordWithVariant,
+  id: 'logo-generation-1',
+  scenario: 'logo-design',
+  projectId: logoProject.id,
+  scenarioMetadata: {
+    logoProjectId: logoProject.id,
+    styleDirectionId: 'modern-minimal',
+    styleDirectionName: '现代极简',
+    logoTypes: ['combination-mark'],
+    promptPackSnapshot: {
+      basePrompt: 'base prompt',
+      directions: []
+    },
+    finalPrompt: 'logo final prompt',
+    briefSnapshot: {
+      brandName: '生花',
+      industry: 'AI 绘图软件',
+      businessDescription: '帮助创作者生成图片',
+      brandKeywords: ['清晰']
+    },
+    qualityRulesVersion: 1
+  },
+  promptOriginal: 'logo final prompt',
+  promptFinal: 'logo final prompt',
+  outputVariantIds: ['logo-variant-1'],
+  variants: [
+    {
+      ...generatedRecordWithVariant.variants[0],
+      id: 'logo-variant-1',
+      generationId: 'logo-generation-1',
+      assetId: 'logo-asset-1',
+      asset: {
+        ...generatedRecordWithVariant.variants[0].asset,
+        id: 'logo-asset-1',
+        sourceGenerationId: 'logo-generation-1'
       }
     }
   ]
@@ -202,6 +261,38 @@ describe('AppShell', () => {
       expect.objectContaining({
         referenceAssetIds: ['asset-1']
       })
+    )
+  })
+
+  it('opens the general edit form when continuing from a logo result', async () => {
+    installBloomCanvasApi({
+      providers: {
+        list: vi.fn().mockResolvedValue({ ok: true, data: [provider] }),
+        save: vi.fn(),
+        getActive: vi.fn().mockResolvedValue({ ok: true, data: provider })
+      },
+      generations: {
+        create: vi.fn(),
+        list: vi.fn().mockResolvedValue({ ok: true, data: [logoGeneratedRecordWithVariant] }),
+        favorite: vi.fn(),
+        retry: vi.fn()
+      },
+      logoProjects: {
+        list: vi.fn().mockResolvedValue({ ok: true, data: [logoProject] }),
+        save: vi.fn(),
+        get: vi.fn()
+      }
+    })
+
+    render(<AppShell />)
+
+    fireEvent.click(await screen.findByText('Logo 设计'))
+    fireEvent.click(await screen.findByRole('button', { name: '继续修改' }))
+
+    expect(await screen.findByLabelText('提示词')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: '参考图 1' })).toHaveAttribute(
+      'src',
+      'bloom-canvas://thumbnail/logo-asset-1'
     )
   })
 })

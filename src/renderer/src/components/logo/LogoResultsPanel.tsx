@@ -1,4 +1,5 @@
 import { Button, Collapse, Empty, Image, Spin, Typography } from 'antd'
+import { useState } from 'react'
 import { assetProtocolUrl } from '../../../../shared/assetProtocol'
 import type { Asset, GenerationRecord } from '../../../../shared/types'
 import { LogoUsabilityPreview } from './LogoUsabilityPreview'
@@ -28,6 +29,19 @@ export function LogoResultsPanel({
   onExport,
   onRetry
 }: LogoResultsPanelProps): React.JSX.Element {
+  const [retryingGenerationId, setRetryingGenerationId] = useState<string | null>(null)
+
+  async function retryGeneration(generationId: string): Promise<void> {
+    setRetryingGenerationId(generationId)
+    try {
+      await onRetry(generationId)
+    } catch {
+      // AppShell owns error reporting; keep this component focused on interaction state.
+    } finally {
+      setRetryingGenerationId(null)
+    }
+  }
+
   if (!selectedProjectId) {
     return (
       <main className="gallery-panel logo-results-panel">
@@ -76,8 +90,16 @@ export function LogoResultsPanel({
                         <Button size="small" onClick={() => void onExport(variant.asset.id)}>
                           导出
                         </Button>
-                        <Button size="small" onClick={() => void onRetry(generation.id)}>
-                          重新生成
+                        <Button
+                          aria-label={
+                            retryingGenerationId === generation.id ? '重新生成中' : '重新生成'
+                          }
+                          disabled={retryingGenerationId === generation.id}
+                          loading={retryingGenerationId === generation.id}
+                          size="small"
+                          onClick={() => void retryGeneration(generation.id)}
+                        >
+                          {retryingGenerationId === generation.id ? '重新生成中' : '重新生成'}
                         </Button>
                       </div>
                       <Collapse

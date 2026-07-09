@@ -1,9 +1,13 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 import type { GenerationRecord, LogoStyleDirectionId } from '../../../../shared/types'
 import { LogoResultsPanel } from './LogoResultsPanel'
 
-function logoRecord(directionId: LogoStyleDirectionId, directionName: string): GenerationRecord {
+function logoRecord(
+  directionId: LogoStyleDirectionId,
+  directionName: string,
+  variants: GenerationRecord['variants'] = []
+): GenerationRecord {
   return {
     id: `generation-${directionId}`,
     mode: 'text-to-image',
@@ -38,9 +42,22 @@ function logoRecord(directionId: LogoStyleDirectionId, directionName: string): G
     createdAt: '2026-07-09T00:00:00.000Z',
     updatedAt: '2026-07-09T00:00:00.000Z',
     references: [],
-    variants: []
+    variants
   }
 }
+
+const logoAsset = {
+  id: 'asset-1',
+  type: 'output',
+  filePath: '/tmp/logo.webp',
+  thumbnailPath: '/tmp/logo-thumb.webp',
+  mimeType: 'image/webp',
+  width: 1024,
+  height: 1024,
+  size: 100,
+  sha256: 'hash',
+  createdAt: '2026-07-09T00:00:00.000Z'
+} satisfies GenerationRecord['variants'][number]['asset']
 
 describe('LogoResultsPanel', () => {
   test('groups logo generations by style direction', () => {
@@ -60,5 +77,46 @@ describe('LogoResultsPanel', () => {
 
     expect(screen.getByText('现代极简')).toBeInTheDocument()
     expect(screen.getByText('图形符号')).toBeInTheDocument()
+  })
+
+  test('shows feedback while retrying a logo generation', async () => {
+    let resolveRetry: (() => void) | undefined
+    const retry = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRetry = resolve
+        })
+    )
+
+    render(
+      <LogoResultsPanel
+        generating={false}
+        generations={[
+          logoRecord('modern-minimal', '现代极简', [
+            {
+              id: 'variant-1',
+              generationId: 'generation-modern-minimal',
+              assetId: logoAsset.id,
+              index: 0,
+              favorite: false,
+              createdAt: '2026-07-09T00:00:00.000Z',
+              asset: logoAsset
+            }
+          ])
+        ]}
+        selectedProjectId="project-1"
+        onContinueEdit={vi.fn()}
+        onExport={vi.fn()}
+        onRetry={retry}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '重新生成' }))
+
+    expect(retry).toHaveBeenCalledWith('generation-modern-minimal')
+    expect(screen.getByRole('button', { name: '重新生成中' })).toBeDisabled()
+
+    resolveRetry?.()
+    await waitFor(() => expect(screen.getByRole('button', { name: '重新生成' })).not.toBeDisabled())
   })
 })

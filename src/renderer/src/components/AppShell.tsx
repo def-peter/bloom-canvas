@@ -93,8 +93,9 @@ function WorkbenchShell(): React.JSX.Element {
 
   function handleContinueEdit(asset: Asset): void {
     setDraftReferenceAssets([asset])
+    setActiveScene('general')
     setError(null)
-    message.info('已加入参考图，请输入修改要求')
+    message.info('已把图片加入参考图，请在提示词里输入修改要求')
   }
 
   async function handleProviderSaved(): Promise<void> {

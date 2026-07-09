@@ -1,22 +1,40 @@
-import { contextBridge } from 'electron'
-import { electronAPI } from '@electron-toolkit/preload'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
+import { IPC_CHANNELS, type BloomCanvasApi } from '../shared/ipc'
 
-// Custom APIs for renderer
-const api = {}
+const bloomCanvasApi: BloomCanvasApi = {
+  providers: {
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.providerList),
+    save: (input) => ipcRenderer.invoke(IPC_CHANNELS.providerSave, input),
+    getActive: () => ipcRenderer.invoke(IPC_CHANNELS.providerGetActive)
+  },
+  settings: {
+    get: () => ipcRenderer.invoke(IPC_CHANNELS.settingsGet),
+    save: (input) => ipcRenderer.invoke(IPC_CHANNELS.settingsSave, input)
+  },
+  assets: {
+    getPathForFile: (file) => webUtils.getPathForFile(file as File),
+    import: (input) => ipcRenderer.invoke(IPC_CHANNELS.assetImport, input),
+    export: (input) => ipcRenderer.invoke(IPC_CHANNELS.assetExport, input)
+  },
+  generations: {
+    create: (input) => ipcRenderer.invoke(IPC_CHANNELS.generationCreate, input),
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.generationList),
+    favorite: (generationId, favorite) =>
+      ipcRenderer.invoke(IPC_CHANNELS.generationFavorite, generationId, favorite),
+    retry: (generationId) => ipcRenderer.invoke(IPC_CHANNELS.generationRetry, generationId)
+  },
+  prompt: {
+    optimize: (input) => ipcRenderer.invoke(IPC_CHANNELS.promptOptimize, input)
+  }
+}
 
-// Use `contextBridge` APIs to expose Electron APIs to
-// renderer only if context isolation is enabled, otherwise
-// just add to the DOM global.
 if (process.contextIsolated) {
   try {
-    contextBridge.exposeInMainWorld('electron', electronAPI)
-    contextBridge.exposeInMainWorld('api', api)
+    contextBridge.exposeInMainWorld('bloomCanvas', bloomCanvasApi)
   } catch (error) {
     console.error(error)
   }
 } else {
   // @ts-ignore (define in dts)
-  window.electron = electronAPI
-  // @ts-ignore (define in dts)
-  window.api = api
+  window.bloomCanvas = bloomCanvasApi
 }

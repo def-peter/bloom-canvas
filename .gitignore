@@ -5,6 +5,7 @@ out
 .eslintcache
 *.log*
 .superpowers/
+.codegraph/
 .claude/skills/
 .codex/skills/
 .gemini/skills/

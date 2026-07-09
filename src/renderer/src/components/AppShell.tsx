@@ -18,6 +18,7 @@ import { CreationPanel } from './CreationPanel'
 import { ErrorNotice } from './ErrorNotice'
 import { GalleryPanel } from './GalleryPanel'
 import { HistoryPanel } from './HistoryPanel'
+import { LogoCreationPanel } from './logo/LogoCreationPanel'
 import { LogoProjectPanel } from './logo/LogoProjectPanel'
 import { ProviderSettingsModal } from './ProviderSettingsModal'
 
@@ -37,6 +38,7 @@ function WorkbenchShell(): React.JSX.Element {
     generating,
     error,
     refresh,
+    refreshLogoProjects,
     setActiveScene,
     selectGeneration,
     selectLogoProject,
@@ -97,6 +99,11 @@ function WorkbenchShell(): React.JSX.Element {
   async function handleProviderSaved(): Promise<void> {
     await refresh()
     setProviderModalOpen(false)
+  }
+
+  async function handleLogoProjectSaved(project: NonNullable<typeof selectedLogoProject>): Promise<void> {
+    await refreshLogoProjects()
+    selectLogoProject(project)
   }
 
   return (
@@ -173,11 +180,18 @@ function WorkbenchShell(): React.JSX.Element {
           <main className="gallery-panel">
             <Typography.Text strong>Logo 结果</Typography.Text>
           </main>
-          <aside className="creation-panel">
-            <div className="panel-header">
-              <Typography.Text strong>品牌简报</Typography.Text>
-            </div>
-          </aside>
+          <LogoCreationPanel
+            activeProvider={activeProvider}
+            project={selectedLogoProject}
+            referenceAssets={draftReferenceAssets}
+            settings={settings}
+            onCreated={handleGenerationCreated}
+            onError={setError}
+            onGeneratingChange={setGenerating}
+            onNeedProvider={() => setProviderModalOpen(true)}
+            onProjectSaved={handleLogoProjectSaved}
+            onReferenceAssetsChange={setDraftReferenceAssets}
+          />
         </div>
       )}
       <ProviderSettingsModal

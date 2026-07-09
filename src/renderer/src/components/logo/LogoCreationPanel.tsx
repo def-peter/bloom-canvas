@@ -1,5 +1,15 @@
-import { DeleteOutlined, FileImageOutlined } from '@ant-design/icons'
-import { Button, Checkbox, Form, Input, InputNumber, Select, Space, Typography } from 'antd'
+import { DeleteOutlined, FileImageOutlined, QuestionCircleOutlined } from '@ant-design/icons'
+import {
+  Button,
+  Checkbox,
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  Space,
+  Tooltip,
+  Typography
+} from 'antd'
 import { useEffect, useState } from 'react'
 import type {
   AppSettings,
@@ -58,6 +68,31 @@ interface LogoCreationFormValues {
   count: number
   quality: GenerationParameters['quality']
   outputFormat: GenerationParameters['outputFormat']
+}
+
+function buildCheckboxOptions<T extends string>(
+  options: ReadonlyArray<{ description?: string; label: string; value: T }>
+): Array<{ label: React.ReactNode; value: T }> {
+  return options.map((option) => ({
+    label: (
+      <span className="logo-option-label">
+        <span>{option.label}</span>
+        {option.description ? (
+          <Tooltip title={option.description}>
+            <span
+              aria-label={`说明：${option.label}`}
+              className="logo-option-help"
+              role="img"
+              tabIndex={0}
+            >
+              <QuestionCircleOutlined />
+            </span>
+          </Tooltip>
+        ) : null}
+      </span>
+    ),
+    value: option.value
+  }))
 }
 
 function splitInput(value: string | undefined): string[] {
@@ -304,7 +339,7 @@ export function LogoCreationPanel({
           name="logoTypes"
           rules={[{ required: true, message: '请选择 Logo 类型' }]}
         >
-          <Checkbox.Group options={[...logoTypeOptions]} />
+          <Checkbox.Group options={buildCheckboxOptions(logoTypeOptions)} />
         </Form.Item>
         <Form.Item
           label="风格方向"
@@ -318,10 +353,10 @@ export function LogoCreationPanel({
             }
           ]}
         >
-          <Checkbox.Group options={[...logoStyleDirectionOptions]} />
+          <Checkbox.Group options={buildCheckboxOptions(logoStyleDirectionOptions)} />
         </Form.Item>
         <Form.Item label="使用场景" name="usageScenarios">
-          <Checkbox.Group options={[...logoUsageScenarioOptions]} />
+          <Checkbox.Group options={buildCheckboxOptions(logoUsageScenarioOptions)} />
         </Form.Item>
         <Form.Item label="参考说明" name="referenceNote">
           <Input.TextArea autoSize={{ minRows: 2, maxRows: 4 }} />

@@ -18,12 +18,14 @@ const styleDirectionLabels: Record<LogoStyleDirectionId, { name: string; instruc
     instruction: 'Create an abstract or semi-abstract symbol with a clear silhouette.'
   },
   wordmark: {
-    name: '字体标',
-    instruction: 'Focus on custom wordmark lettering with simple, readable forms.'
+    name: '文字方向：品牌全名',
+    instruction:
+      'Full brand-name lettering direction: make the complete brand name the main visual element; use custom, simple, readable lettering; do not make a separate icon the main focus.'
   },
   lettermark: {
-    name: '字母标',
-    instruction: 'Use initials or short name as the main mark, with simple letter construction.'
+    name: '字母方向：首字母/缩写',
+    instruction:
+      'Initials or abbreviation direction: use the short name or initials as the main mark; build a simple, memorable letterform; avoid tiny decorative cuts.'
   },
   emblem: {
     name: '徽章式',
@@ -48,12 +50,17 @@ const styleDirectionLabels: Record<LogoStyleDirectionId, { name: string; instruc
   }
 }
 
-const logoTypeLabels: Record<LogoType, string> = {
-  'symbol-mark': '图形标',
-  wordmark: '字体标',
-  'combination-mark': '组合标',
-  lettermark: '字母标',
-  emblem: '徽章标'
+const logoTypeInstructions: Record<LogoType, string> = {
+  'symbol-mark':
+    'symbol-only logo: create a simple standalone icon or abstract mark; do not make brand text the main element',
+  wordmark:
+    'full brand-name text logo: design the complete brand name as custom lettering; no separate icon as the main element',
+  'combination-mark':
+    'icon plus brand-name lockup: create a simple symbol and place it with the full brand name as a balanced logo system',
+  lettermark:
+    'initials or abbreviation logo: use the short name or initials as the main mark; keep the letter construction simple and readable',
+  emblem:
+    'simple badge logo: place text or symbol inside a very simple enclosing shape; avoid ornate badge details'
 }
 
 const usageLabels: Record<LogoUsageScenario, string> = {
@@ -85,7 +92,8 @@ export function buildLogoPromptPack(input: BuildLogoPromptPackInput): LogoPrompt
     input.differentiator ? `- Differentiator: ${input.differentiator}` : null,
     '',
     'Logo constraints:',
-    `- Logo type: ${input.logoTypes.map((item) => logoTypeLabels[item]).join(', ')}`,
+    '- Logo type requirements:',
+    ...input.logoTypes.map((item) => `  - ${logoTypeInstructions[item]}`),
     `- Preferred colors: ${joinList(input.preferredColors)}`,
     `- Avoided colors: ${joinList(input.avoidedColors)}`,
     input.avoidElements ? `- Avoid elements or feelings: ${input.avoidElements}` : null,

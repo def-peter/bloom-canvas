@@ -273,6 +273,22 @@ body {
   gap: 8px 12px;
 }
 
+.logo-option-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.logo-option-help {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--bc-muted);
+  cursor: help;
+}
+
 .logo-prompt-preview {
   display: grid;
   gap: 12px;

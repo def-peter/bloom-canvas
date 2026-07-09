@@ -44,4 +44,29 @@ describe('buildLogoPromptPack', () => {
     expect(finalPrompts).toContain('avoid complex lines')
     expect(finalPrompts).toContain('avoid metallic effects')
   })
+
+  test('describes logo types without ambiguous shorthand', () => {
+    const pack = buildLogoPromptPack({
+      brandName: 'BloomCanvas',
+      shortName: 'BC',
+      industry: 'AI 绘图软件',
+      businessDescription: '帮助创作者生成图片',
+      brandKeywords: ['清晰'],
+      logoTypes: ['wordmark', 'lettermark', 'combination-mark'],
+      styleDirections: ['wordmark', 'lettermark'],
+      referenceImageIds: []
+    })
+
+    const promptText = [pack.basePrompt, ...pack.directions.map((item) => item.finalPrompt)].join(
+      '\n'
+    )
+
+    expect(promptText).toContain(
+      'full brand-name text logo: design the complete brand name as custom lettering'
+    )
+    expect(promptText).toContain('initials or abbreviation logo: use the short name or initials')
+    expect(promptText).toContain('icon plus brand-name lockup')
+    expect(promptText).toContain('Full brand-name lettering direction')
+    expect(promptText).toContain('Initials or abbreviation direction')
+  })
 })

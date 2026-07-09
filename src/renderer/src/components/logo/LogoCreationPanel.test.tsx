@@ -40,6 +40,32 @@ const provider: ProviderConfig = {
 }
 
 describe('LogoCreationPanel', () => {
+  test('explains logo type choices in plain language', () => {
+    render(
+      <App>
+        <LogoCreationPanel
+          activeProvider={provider}
+          project={null}
+          referenceAssets={[]}
+          settings={null}
+          onCreated={vi.fn()}
+          onError={vi.fn()}
+          onGeneratingChange={vi.fn()}
+          onNeedProvider={vi.fn()}
+          onProjectSaved={vi.fn()}
+          onReferenceAssetsChange={vi.fn()}
+        />
+      </App>
+    )
+
+    expect(screen.getByText('图标 + 品牌名')).toBeInTheDocument()
+    expect(screen.getByText('品牌全名文字')).toBeInTheDocument()
+    expect(screen.getByText('首字母 / 缩写')).toBeInTheDocument()
+    expect(screen.getByLabelText('说明：图标 + 品牌名')).toBeInTheDocument()
+    expect(screen.getByLabelText('说明：品牌全名文字')).toBeInTheDocument()
+    expect(screen.getByLabelText('说明：首字母 / 缩写')).toBeInTheDocument()
+  })
+
   test('builds a prompt pack before image generation', async () => {
     render(
       <App>

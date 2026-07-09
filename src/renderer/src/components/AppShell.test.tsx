@@ -129,6 +129,16 @@ describe('AppShell', () => {
     expect(screen.getByRole('button', { name: /provider 设置/i })).toBeInTheDocument()
   })
 
+  it('switches between general creation and logo design scenes', async () => {
+    render(<AppShell />)
+
+    expect(await screen.findByText('通用创作')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Logo 设计'))
+
+    expect(await screen.findByText('Logo 项目')).toBeInTheDocument()
+    expect(screen.getByText('品牌简报')).toBeInTheDocument()
+  })
+
   it('selects the generated record after creating an image', async () => {
     const create = vi.fn().mockResolvedValue({ ok: true, data: generatedRecord })
     installBloomCanvasApi({

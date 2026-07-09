@@ -1,5 +1,14 @@
 import { SettingOutlined } from '@ant-design/icons'
-import { App as AntdApp, Button, ConfigProvider, Layout, Select, Spin, Typography } from 'antd'
+import {
+  App as AntdApp,
+  Button,
+  ConfigProvider,
+  Layout,
+  Segmented,
+  Select,
+  Spin,
+  Typography
+} from 'antd'
 import { useState } from 'react'
 import { bloomCanvasClient } from '../api/bloomCanvasClient'
 import { useWorkbenchStore } from '../state/workbenchStore'
@@ -15,6 +24,7 @@ const { Header } = Layout
 
 function WorkbenchShell(): React.JSX.Element {
   const {
+    activeScene,
     providers,
     activeProvider,
     settings,
@@ -24,6 +34,7 @@ function WorkbenchShell(): React.JSX.Element {
     generating,
     error,
     refresh,
+    setActiveScene,
     selectGeneration,
     setGenerating,
     setError
@@ -92,6 +103,14 @@ function WorkbenchShell(): React.JSX.Element {
           <Typography.Text>BloomCanvas</Typography.Text>
         </div>
         <div className="header-controls">
+          <Segmented
+            options={[
+              { label: '通用创作', value: 'general' },
+              { label: 'Logo 设计', value: 'logo-design' }
+            ]}
+            value={activeScene}
+            onChange={(value) => setActiveScene(value as 'general' | 'logo-design')}
+          />
           <Select
             aria-label="Provider"
             className="provider-select"
@@ -114,7 +133,7 @@ function WorkbenchShell(): React.JSX.Element {
         <main className="loading-view">
           <Spin />
         </main>
-      ) : (
+      ) : activeScene === 'general' ? (
         <div className="workspace-grid">
           <HistoryPanel
             generations={generations}
@@ -138,6 +157,22 @@ function WorkbenchShell(): React.JSX.Element {
             onNeedProvider={() => setProviderModalOpen(true)}
             onReferenceAssetsChange={setDraftReferenceAssets}
           />
+        </div>
+      ) : (
+        <div className="workspace-grid logo-workspace-grid">
+          <aside className="history-panel">
+            <div className="panel-header">
+              <Typography.Text strong>Logo 项目</Typography.Text>
+            </div>
+          </aside>
+          <main className="gallery-panel">
+            <Typography.Text strong>Logo 结果</Typography.Text>
+          </main>
+          <aside className="creation-panel">
+            <div className="panel-header">
+              <Typography.Text strong>品牌简报</Typography.Text>
+            </div>
+          </aside>
         </div>
       )}
       <ProviderSettingsModal

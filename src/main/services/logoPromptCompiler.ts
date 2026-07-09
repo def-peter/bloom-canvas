@@ -76,6 +76,23 @@ function joinList(values: string[] | undefined): string {
   return values?.filter(Boolean).join(', ') || '未指定'
 }
 
+function formatPreferredColors(values: string[] | undefined): string {
+  const text = joinList(values)
+  if (text === '未指定') return text
+
+  const normalized = text.toLowerCase()
+  if (
+    text.includes('双色') ||
+    normalized.includes('two color') ||
+    normalized.includes('two-color') ||
+    normalized.includes('duotone')
+  ) {
+    return `${text}; use two solid colors, no gradients unless explicitly requested`
+  }
+
+  return `${text}; solid colors preferred, no gradients unless explicitly requested`
+}
+
 export function buildLogoPromptPack(input: BuildLogoPromptPackInput): LogoPromptPack {
   const basePrompt = [
     'Create a logo concept for this brand.',
@@ -94,7 +111,7 @@ export function buildLogoPromptPack(input: BuildLogoPromptPackInput): LogoPrompt
     'Logo constraints:',
     '- Logo type requirements:',
     ...input.logoTypes.map((item) => `  - ${logoTypeInstructions[item]}`),
-    `- Preferred colors: ${joinList(input.preferredColors)}`,
+    `- Preferred colors: ${formatPreferredColors(input.preferredColors)}`,
     `- Avoided colors: ${joinList(input.avoidedColors)}`,
     input.avoidElements ? `- Avoid elements or feelings: ${input.avoidElements}` : null,
     `- Usage scenarios: ${
@@ -111,7 +128,12 @@ export function buildLogoPromptPack(input: BuildLogoPromptPackInput): LogoPrompt
     '- works at 64px and 32px',
     '- no complex texture, no tiny decorative elements',
     '- no photorealistic scene, no poster background, no mockup',
-    '- no excessive shadows, gradients, metallic effects, or 3D rendering',
+    '- no generic upward arrows, no bar charts, no rockets, no gears',
+    '- no dense network-node diagrams, no circuit-board details',
+    '- no stock-logo swooshes, no generic speed lines',
+    '- no gradients unless explicitly requested',
+    '- no tiny text, no slogan, no decorative micro-details',
+    '- no excessive shadows, metallic effects, or 3D rendering',
     '- centered composition on a clean plain background'
   ]
     .filter((line): line is string => line !== null)

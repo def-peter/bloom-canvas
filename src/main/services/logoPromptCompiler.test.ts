@@ -69,4 +69,29 @@ describe('buildLogoPromptPack', () => {
     expect(promptText).toContain('Full brand-name lettering direction')
     expect(promptText).toContain('Initials or abbreviation direction')
   })
+
+  test('adds anti-cliche logo rules and keeps two-color requests solid', () => {
+    const pack = buildLogoPromptPack({
+      brandName: 'BI 向前冲',
+      shortName: 'BI',
+      industry: '电商 BI',
+      businessDescription: '电商平台 BI 部门',
+      brandKeywords: ['可靠', '创造力'],
+      preferredColors: ['蓝绿组合双色'],
+      logoTypes: ['lettermark'],
+      styleDirections: ['modern-minimal'],
+      usageScenarios: ['app-icon'],
+      referenceImageIds: []
+    })
+
+    expect(pack.basePrompt).toContain('two solid colors')
+    expect(pack.basePrompt).toContain('no generic upward arrows')
+    expect(pack.basePrompt).toContain('no bar charts')
+    expect(pack.basePrompt).toContain('no rockets')
+    expect(pack.basePrompt).toContain('no gears')
+    expect(pack.basePrompt).toContain('no dense network-node diagrams')
+    expect(pack.basePrompt).toContain('no stock-logo swooshes')
+    expect(pack.basePrompt).toContain('no gradients unless explicitly requested')
+    expect(pack.basePrompt).toContain('no tiny text')
+  })
 })

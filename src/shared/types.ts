@@ -2,12 +2,32 @@ export type ProviderId = string
 export type GenerationId = string
 export type AssetId = string
 export type VariantId = string
+export type LogoProjectId = string
 
+export type GenerationScenario = 'general' | 'logo-design'
 export type GenerationMode = 'text-to-image' | 'image-to-image'
 export type GenerationStatus = 'pending' | 'running' | 'succeeded' | 'failed'
 export type AssetType = 'reference' | 'output'
 export type ImageQuality = 'standard' | 'hd'
 export type OutputFormat = 'png' | 'jpeg' | 'webp'
+export type LogoType = 'symbol-mark' | 'wordmark' | 'combination-mark' | 'lettermark' | 'emblem'
+export type LogoStyleDirectionId =
+  | 'modern-minimal'
+  | 'symbolic-mark'
+  | 'wordmark'
+  | 'lettermark'
+  | 'emblem'
+  | 'tech'
+  | 'friendly-rounded'
+  | 'eastern-modern'
+  | 'premium-restraint'
+export type LogoUsageScenario =
+  | 'app-icon'
+  | 'website'
+  | 'ecommerce'
+  | 'packaging'
+  | 'storefront'
+  | 'social-avatar'
 
 export interface GenerationParameters {
   size: '1024x1024' | '1024x1536' | '1536x1024' | 'auto'
@@ -61,9 +81,78 @@ export interface Variant {
   createdAt: string
 }
 
+export interface LogoPromptDirection {
+  id: LogoStyleDirectionId
+  name: string
+  prompt: string
+  finalPrompt: string
+}
+
+export interface LogoPromptPack {
+  basePrompt: string
+  directions: LogoPromptDirection[]
+}
+
+export interface LogoProject {
+  id: LogoProjectId
+  brandName: string
+  brandNameAlt?: string
+  shortName?: string
+  slogan?: string
+  industry: string
+  businessDescription: string
+  targetAudience?: string
+  brandKeywords: string[]
+  differentiator?: string
+  avoidElements?: string
+  preferredColors: string[]
+  avoidedColors: string[]
+  logoTypes: LogoType[]
+  styleDirections: LogoStyleDirectionId[]
+  usageScenarios: LogoUsageScenario[]
+  referenceImageIds: AssetId[]
+  referenceNote?: string
+  promptPack?: LogoPromptPack
+  generationIds: GenerationId[]
+  favoriteVariantIds: VariantId[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface LogoBriefSnapshot {
+  brandName: string
+  brandNameAlt?: string
+  shortName?: string
+  slogan?: string
+  industry: string
+  businessDescription: string
+  targetAudience?: string
+  brandKeywords: string[]
+  differentiator?: string
+  avoidElements?: string
+  preferredColors?: string[]
+  avoidedColors?: string[]
+  usageScenarios?: LogoUsageScenario[]
+  referenceNote?: string
+}
+
+export interface LogoGenerationMetadata {
+  logoProjectId: LogoProjectId
+  styleDirectionId: LogoStyleDirectionId
+  styleDirectionName: string
+  logoTypes: LogoType[]
+  promptPackSnapshot: LogoPromptPack
+  finalPrompt: string
+  briefSnapshot: LogoBriefSnapshot
+  qualityRulesVersion: 1
+}
+
 export interface Generation {
   id: GenerationId
   mode: GenerationMode
+  scenario?: GenerationScenario
+  projectId?: LogoProjectId
+  scenarioMetadata?: LogoGenerationMetadata
   promptOriginal: string
   promptOptimized?: string
   promptFinal: string
@@ -90,6 +179,9 @@ export interface CreateGenerationInput {
   referenceAssetIds: AssetId[]
   parameters: GenerationParameters
   providerId: ProviderId
+  scenario?: GenerationScenario
+  projectId?: LogoProjectId
+  scenarioMetadata?: LogoGenerationMetadata
 }
 
 export interface SaveProviderInput {
@@ -113,6 +205,32 @@ export interface ExportAssetInput {
 export interface PromptOptimizeInput {
   providerId: ProviderId
   prompt: string
+}
+
+export interface SaveLogoProjectInput {
+  id?: LogoProjectId
+  brandName: string
+  brandNameAlt?: string
+  shortName?: string
+  slogan?: string
+  industry: string
+  businessDescription: string
+  targetAudience?: string
+  brandKeywords: string[]
+  differentiator?: string
+  avoidElements?: string
+  preferredColors?: string[]
+  avoidedColors?: string[]
+  logoTypes: LogoType[]
+  styleDirections: LogoStyleDirectionId[]
+  usageScenarios?: LogoUsageScenario[]
+  referenceImageIds: AssetId[]
+  referenceNote?: string
+  promptPack?: LogoPromptPack
+}
+
+export interface BuildLogoPromptPackInput extends SaveLogoProjectInput {
+  id?: LogoProjectId
 }
 
 export interface AppErrorPayload {

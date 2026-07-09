@@ -37,6 +37,34 @@ describe('logo schemas', () => {
     ).toThrow()
   })
 
+  test('rejects more than one logo type', () => {
+    expect(() =>
+      saveLogoProjectSchema.parse({
+        brandName: '生花',
+        industry: 'AI 绘图软件',
+        businessDescription: '帮助创作者用 AI 生成图片',
+        brandKeywords: ['清晰'],
+        logoTypes: ['combination-mark', 'symbol-mark'],
+        styleDirections: ['modern-minimal'],
+        referenceImageIds: []
+      })
+    ).toThrow()
+  })
+
+  test('rejects more than three style directions', () => {
+    expect(() =>
+      saveLogoProjectSchema.parse({
+        brandName: '生花',
+        industry: 'AI 绘图软件',
+        businessDescription: '帮助创作者用 AI 生成图片',
+        brandKeywords: ['清晰'],
+        logoTypes: ['combination-mark'],
+        styleDirections: ['modern-minimal', 'symbolic-mark', 'wordmark', 'lettermark'],
+        referenceImageIds: []
+      })
+    ).toThrow()
+  })
+
   test('accepts logo metadata on generation input', () => {
     const promptPack = logoPromptPackSchema.parse({
       basePrompt: 'base prompt',

@@ -30,7 +30,10 @@ export function LogoPromptPreview({
               <Form.Item label="方向提示词" name={['promptPack', 'directions', index, 'prompt']}>
                 <Input.TextArea autoSize={{ minRows: 3, maxRows: 6 }} />
               </Form.Item>
-              <Form.Item label="最终提示词" name={['promptPack', 'directions', index, 'finalPrompt']}>
+              <Form.Item
+                label="最终提示词"
+                name={['promptPack', 'directions', index, 'finalPrompt']}
+              >
                 <Input.TextArea autoSize={{ minRows: 5, maxRows: 10 }} />
               </Form.Item>
             </>

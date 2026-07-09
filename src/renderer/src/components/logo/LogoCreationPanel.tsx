@@ -143,12 +143,12 @@ export function LogoCreationPanel({
 }: LogoCreationPanelProps): React.JSX.Element {
   const [form] = Form.useForm<LogoCreationFormValues>()
   const [buildingPrompt, setBuildingPrompt] = useState(false)
-  const [promptPack, setPromptPack] = useState<LogoPromptPack | null>(project?.promptPack ?? null)
+  const promptPack =
+    (Form.useWatch('promptPack', { form, preserve: true }) as LogoPromptPack | undefined) ?? null
 
   useEffect(() => {
     const nextValues = createInitialValues(project, settings)
     form.setFieldsValue(nextValues)
-    setPromptPack(nextValues.promptPack ?? null)
   }, [form, project, settings])
 
   async function buildPromptPackFromValues(
@@ -158,7 +158,6 @@ export function LogoCreationPanel({
       toProjectInput(values, project, referenceAssets)
     )
     form.setFieldValue('promptPack', nextPromptPack)
-    setPromptPack(nextPromptPack)
     return nextPromptPack
   }
 
@@ -182,7 +181,8 @@ export function LogoCreationPanel({
     }
 
     const values = await form.validateFields()
-    const confirmedPromptPack = values.promptPack ?? promptPack ?? (await buildPromptPackFromValues(values))
+    const confirmedPromptPack =
+      values.promptPack ?? promptPack ?? (await buildPromptPackFromValues(values))
     const savedProject = await bloomCanvasClient.logoProjects.save(
       toProjectInput(values, project, referenceAssets, confirmedPromptPack)
     )
@@ -253,7 +253,11 @@ export function LogoCreationPanel({
         requiredMark={false}
       >
         <Typography.Text strong>基础信息</Typography.Text>
-        <Form.Item label="品牌名" name="brandName" rules={[{ required: true, message: '请输入品牌名' }]}>
+        <Form.Item
+          label="品牌名"
+          name="brandName"
+          rules={[{ required: true, message: '请输入品牌名' }]}
+        >
           <Input allowClear />
         </Form.Item>
         <Form.Item label="英文名/简称" name="shortName">

@@ -102,7 +102,9 @@ function WorkbenchShell(): React.JSX.Element {
     setProviderModalOpen(false)
   }
 
-  async function handleLogoProjectSaved(project: NonNullable<typeof selectedLogoProject>): Promise<void> {
+  async function handleLogoProjectSaved(
+    project: NonNullable<typeof selectedLogoProject>
+  ): Promise<void> {
     await refreshLogoProjects()
     selectLogoProject(project)
   }

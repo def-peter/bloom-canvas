@@ -31,13 +31,7 @@ describe('logo schemas', () => {
         businessDescription: '帮助创作者用 AI 生成图片',
         brandKeywords: ['清晰'],
         logoTypes: ['combination-mark'],
-        styleDirections: [
-          'modern-minimal',
-          'symbolic-mark',
-          'wordmark',
-          'lettermark',
-          'emblem'
-        ],
+        styleDirections: ['modern-minimal', 'symbolic-mark', 'wordmark', 'lettermark', 'emblem'],
         referenceImageIds: []
       })
     ).toThrow()

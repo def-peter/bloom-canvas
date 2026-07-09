@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { AppSettings, GenerationRecord, LogoProject, ProviderConfig } from '../../../shared/types'
+import type {
+  AppSettings,
+  GenerationRecord,
+  LogoProject,
+  ProviderConfig
+} from '../../../shared/types'
 import { bloomCanvasClient } from '../api/bloomCanvasClient'
 
 export type WorkbenchScene = 'general' | 'logo-design'
@@ -50,19 +55,14 @@ export function useWorkbenchStore(): WorkbenchState {
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
-      const [
-        nextProviders,
-        nextActiveProvider,
-        nextSettings,
-        nextGenerations,
-        nextLogoProjects
-      ] = await Promise.all([
-        bloomCanvasClient.providers.list(),
-        bloomCanvasClient.providers.getActive(),
-        bloomCanvasClient.settings.get(),
-        bloomCanvasClient.generations.list(),
-        bloomCanvasClient.logoProjects.list()
-      ])
+      const [nextProviders, nextActiveProvider, nextSettings, nextGenerations, nextLogoProjects] =
+        await Promise.all([
+          bloomCanvasClient.providers.list(),
+          bloomCanvasClient.providers.getActive(),
+          bloomCanvasClient.settings.get(),
+          bloomCanvasClient.generations.list(),
+          bloomCanvasClient.logoProjects.list()
+        ])
       setProviders(nextProviders)
       setActiveProvider(nextActiveProvider)
       setSettings(nextSettings)
@@ -74,7 +74,9 @@ export function useWorkbenchStore(): WorkbenchState {
       })
       setSelectedLogoProject((current) => {
         if (!current) return nextLogoProjects[0] ?? null
-        return nextLogoProjects.find((item) => item.id === current.id) ?? nextLogoProjects[0] ?? null
+        return (
+          nextLogoProjects.find((item) => item.id === current.id) ?? nextLogoProjects[0] ?? null
+        )
       })
       setError(null)
     } catch (refreshError) {

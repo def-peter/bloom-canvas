@@ -22,12 +22,7 @@ export type LogoStyleDirectionId =
   | 'eastern-modern'
   | 'premium-restraint'
 export type LogoUsageScenario =
-  | 'app-icon'
-  | 'website'
-  | 'ecommerce'
-  | 'packaging'
-  | 'storefront'
-  | 'social-avatar'
+  'app-icon' | 'website' | 'ecommerce' | 'packaging' | 'storefront' | 'social-avatar'
 
 export interface GenerationParameters {
   size: '1024x1024' | '1024x1536' | '1536x1024' | 'auto'

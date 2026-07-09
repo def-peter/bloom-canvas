@@ -39,7 +39,8 @@ const styleDirectionLabels: Record<LogoStyleDirectionId, { name: string; instruc
   },
   'eastern-modern': {
     name: '东方现代',
-    instruction: 'Blend modern geometry with subtle eastern cues, avoid complex traditional patterns.'
+    instruction:
+      'Blend modern geometry with subtle eastern cues, avoid complex traditional patterns.'
   },
   'premium-restraint': {
     name: '高端克制',

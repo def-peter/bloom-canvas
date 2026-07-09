@@ -57,7 +57,9 @@ export function LogoResultsPanel({
             <section className="logo-direction-group" key={directionName}>
               <div className="logo-direction-header">
                 <Typography.Text strong>{directionName}</Typography.Text>
-                <Typography.Text type="secondary">{directionGenerations.length} 次生成</Typography.Text>
+                <Typography.Text type="secondary">
+                  {directionGenerations.length} 次生成
+                </Typography.Text>
               </div>
               <div className="result-grid">
                 {directionGenerations.flatMap((generation) =>

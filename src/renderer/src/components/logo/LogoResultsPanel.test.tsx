@@ -3,10 +3,7 @@ import { describe, expect, test, vi } from 'vitest'
 import type { GenerationRecord, LogoStyleDirectionId } from '../../../../shared/types'
 import { LogoResultsPanel } from './LogoResultsPanel'
 
-function logoRecord(
-  directionId: LogoStyleDirectionId,
-  directionName: string
-): GenerationRecord {
+function logoRecord(directionId: LogoStyleDirectionId, directionName: string): GenerationRecord {
   return {
     id: `generation-${directionId}`,
     mode: 'text-to-image',

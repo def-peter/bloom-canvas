@@ -46,6 +46,14 @@ const generation: GenerationRecord = {
   ]
 }
 
+const failedGeneration: GenerationRecord = {
+  ...generation,
+  outputVariantIds: [],
+  status: 'failed',
+  errorMessage: `Provider request failed: 400 {"error":{"code":"unknown_parameter","message":"Unknown parameter: 'tools[0].n'.","param":"tools[0].n","type":"invalid_request_error"}}`,
+  variants: []
+}
+
 describe('GalleryPanel', () => {
   it('uses app protocol URLs for generated images', () => {
     render(
@@ -62,5 +70,21 @@ describe('GalleryPanel', () => {
       'src',
       'bloom-canvas://asset/asset-1'
     )
+  })
+
+  it('shows a readable failure state for failed generations', () => {
+    render(
+      <GalleryPanel
+        generation={failedGeneration}
+        generating={false}
+        onContinueEdit={vi.fn()}
+        onExport={vi.fn()}
+        onRetry={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('生成失败')).toBeInTheDocument()
+    expect(screen.getByText("Unknown parameter: 'tools[0].n'.")).toBeInTheDocument()
+    expect(screen.queryByText(/unknown_parameter/)).not.toBeInTheDocument()
   })
 })

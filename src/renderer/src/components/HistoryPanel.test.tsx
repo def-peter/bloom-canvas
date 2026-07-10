@@ -19,7 +19,7 @@ const failedGeneration: GenerationRecord = {
   providerId: 'provider-1',
   status: 'failed',
   favorite: false,
-  errorMessage: "Provider request failed: Unknown parameter: 'tools[0].n'",
+  errorMessage: `Provider request failed: 400 {"error":{"code":"unknown_parameter","message":"Unknown parameter: 'tools[0].n'.","param":"tools[0].n","type":"invalid_request_error"}}`,
   createdAt: '2026-07-09T00:00:00.000Z',
   updatedAt: '2026-07-09T00:00:00.000Z',
   references: [],
@@ -33,6 +33,7 @@ describe('HistoryPanel', () => {
     )
 
     expect(screen.getByLabelText('生成失败')).toBeInTheDocument()
-    expect(screen.getByText(/生成失败：Provider request failed/)).toBeInTheDocument()
+    expect(screen.getByText("生成失败 · Unknown parameter: 'tools[0].n'.")).toBeInTheDocument()
+    expect(screen.queryByText(/unknown_parameter/)).not.toBeInTheDocument()
   })
 })

@@ -1,8 +1,9 @@
 import { DownloadOutlined, EditOutlined, ReloadOutlined } from '@ant-design/icons'
-import { Button, Empty, Image, Skeleton, Tooltip, Typography } from 'antd'
+import { Alert, Button, Empty, Image, Skeleton, Tooltip, Typography } from 'antd'
 import { useState } from 'react'
 import { assetProtocolUrl } from '../../../shared/assetProtocol'
 import type { Asset, GenerationRecord } from '../../../shared/types'
+import { summarizeGenerationError } from '../utils/generationStatus'
 import { ImagePreviewModal } from './ImagePreviewModal'
 
 interface GalleryPanelProps {
@@ -34,6 +35,30 @@ export function GalleryPanel({
     return (
       <main className="gallery-panel gallery-empty">
         <Empty description="写下提示词，开始生成第一张图" />
+      </main>
+    )
+  }
+
+  if (generation.status === 'failed') {
+    return (
+      <main className="gallery-panel">
+        <div className="gallery-header">
+          <div>
+            <Typography.Title level={4}>生成失败</Typography.Title>
+            <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }}>
+              {generation.promptFinal}
+            </Typography.Paragraph>
+          </div>
+          <Button icon={<ReloadOutlined />} onClick={() => onRetry(generation.id)}>
+            重新生成
+          </Button>
+        </div>
+        <Alert
+          showIcon
+          description="这条记录没有生成图片。可以调整 Provider 设置后重新生成。"
+          message={summarizeGenerationError(generation.errorMessage)}
+          type="error"
+        />
       </main>
     )
   }

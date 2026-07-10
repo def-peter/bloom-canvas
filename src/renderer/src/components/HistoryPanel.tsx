@@ -8,6 +8,7 @@ import { Button, Empty, Input, List, Segmented, Space, Typography } from 'antd'
 import { useMemo, useState } from 'react'
 import { thumbnailProtocolUrl } from '../../../shared/assetProtocol'
 import type { GenerationRecord } from '../../../shared/types'
+import { summarizeGenerationError } from '../utils/generationStatus'
 
 interface HistoryPanelProps {
   generations: GenerationRecord[]
@@ -60,38 +61,49 @@ export function HistoryPanel({
         <List
           className="history-list"
           dataSource={filteredGenerations}
-          renderItem={(generation) => (
-            <List.Item
-              className={
-                generation.id === selectedId ? 'history-item history-item-active' : 'history-item'
-              }
-              onClick={() => onSelect(generation)}
-            >
-              <div className="history-thumb">
-                {generation.status === 'failed' ? (
-                  <CloseCircleOutlined aria-label="生成失败" className="history-failed-icon" />
-                ) : generation.variants[0]?.asset.thumbnailPath ? (
-                  <img alt="" src={thumbnailProtocolUrl(generation.variants[0].assetId)} />
-                ) : (
-                  <span />
-                )}
-              </div>
-              <div className="history-content">
-                <Typography.Text ellipsis>{generation.promptFinal}</Typography.Text>
-                <Typography.Text type="secondary">
-                  {generation.status === 'failed'
-                    ? `生成失败：${generation.errorMessage ?? '未知错误'}`
-                    : new Date(generation.createdAt).toLocaleString()}
-                </Typography.Text>
-              </div>
-              <Button
-                aria-label={generation.favorite ? '已收藏' : '未收藏'}
-                icon={generation.favorite ? <StarFilled /> : <StarOutlined />}
-                size="small"
-                type="text"
-              />
-            </List.Item>
-          )}
+          renderItem={(generation) => {
+            const failureSummary =
+              generation.status === 'failed'
+                ? summarizeGenerationError(generation.errorMessage)
+                : null
+
+            return (
+              <List.Item
+                className={
+                  generation.id === selectedId ? 'history-item history-item-active' : 'history-item'
+                }
+                onClick={() => onSelect(generation)}
+              >
+                <div className="history-thumb">
+                  {generation.status === 'failed' ? (
+                    <CloseCircleOutlined aria-label="生成失败" className="history-failed-icon" />
+                  ) : generation.variants[0]?.asset.thumbnailPath ? (
+                    <img alt="" src={thumbnailProtocolUrl(generation.variants[0].assetId)} />
+                  ) : (
+                    <span />
+                  )}
+                </div>
+                <div className="history-content">
+                  <Typography.Text ellipsis>{generation.promptFinal}</Typography.Text>
+                  {failureSummary ? (
+                    <span className="history-error-summary" title={failureSummary}>
+                      生成失败 · {failureSummary}
+                    </span>
+                  ) : (
+                    <Typography.Text type="secondary">
+                      {new Date(generation.createdAt).toLocaleString()}
+                    </Typography.Text>
+                  )}
+                </div>
+                <Button
+                  aria-label={generation.favorite ? '已收藏' : '未收藏'}
+                  icon={generation.favorite ? <StarFilled /> : <StarOutlined />}
+                  size="small"
+                  type="text"
+                />
+              </List.Item>
+            )
+          }}
         />
       )}
     </aside>

@@ -21,7 +21,9 @@ describe('normalizeLogoBrief', () => {
     const result = normalizeLogoBrief(brief)
 
     expect(result.brief.brandKeywords).toEqual(['清晰', '创造力'])
-    expect(result.dynamicExclusions.join(' ')).toMatch(/flower petals|leaves|robot heads|circuit/i)
+    expect(result.dynamicExclusions).toEqual(
+      expect.arrayContaining(['flower petals', 'leaves', 'robot heads', 'circuit boards'])
+    )
     expect(result.minimumNonLiteralStrategyCount).toBe(2)
   })
 
@@ -113,6 +115,18 @@ describe('normalizeLogoBrief', () => {
     expect(result.explicitlyRequestedElements).not.toContain('leaves')
     expect(result.dynamicExclusions).not.toContain('globes')
     expect(result.dynamicExclusions).toContain('leaves')
+  })
+
+  test('does not treat Chinese negated requirements as explicit requests', () => {
+    const result = normalizeLogoBrief({
+      ...brief,
+      referenceNote: '不需要叶子，也非必须使用花瓣'
+    })
+
+    expect(result.explicitlyRequestedElements).not.toContain('leaves')
+    expect(result.explicitlyRequestedElements).not.toContain('flower petals')
+    expect(result.dynamicExclusions).toContain('leaves')
+    expect(result.dynamicExclusions).toContain('flower petals')
   })
 })
 

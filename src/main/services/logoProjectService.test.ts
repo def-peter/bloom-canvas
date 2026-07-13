@@ -173,6 +173,35 @@ describe('LogoProjectService', () => {
     expect(persisted.avoidedElements).toEqual(['新花瓣', '旧叶片', 'AI sparkle'])
   })
 
+  test('preserves V2 avoided elements after an equivalent legacy UI save', async () => {
+    const existing = legacyProject({
+      briefVersion: 1,
+      avoidElements: 'old flower',
+      avoidedElements: ['old flower']
+    })
+    await seedProject(existing)
+
+    const v2Input = parseProjectUpdate(existing, {
+      avoidedElements: ['new leaf', 'open canvas']
+    })
+    await service.save(v2Input)
+
+    const afterV2Save = await readPersistedProject(existing.id)
+    expect(afterV2Save.avoidElements).toBe('new leaf，open canvas')
+    expect(afterV2Save.avoidedElements).toEqual(['new leaf', 'open canvas'])
+
+    const legacyInput = parseProjectUpdate(afterV2Save, {
+      avoidElements: afterV2Save.avoidElements,
+      styleDirections: afterV2Save.styleDirections,
+      promptPack: afterV2Save.promptPack
+    })
+    await service.save(legacyInput)
+
+    const afterLegacySave = await readPersistedProject(existing.id)
+    expect(afterLegacySave.avoidElements).toBe('new leaf，open canvas')
+    expect(afterLegacySave.avoidedElements).toEqual(['new leaf', 'open canvas'])
+  })
+
   test.each([
     ['a 121-character item', 'x'.repeat(121)],
     ['13 items', Array.from({ length: 13 }, (_, index) => `item-${index + 1}`).join(',')]

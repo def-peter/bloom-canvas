@@ -82,6 +82,10 @@ export class LogoProjectService {
         : undefined
     const briefVersion = input.briefVersion ?? existing?.briefVersion
     const avoidedElements = resolveAvoidedElements(input, existing, briefVersion)
+    const avoidElements =
+      input.avoidedElements !== undefined
+        ? input.avoidedElements.join('，')
+        : (input.avoidElements ?? existing?.avoidElements)
     const nextProject: LogoProject = {
       id: existing?.id ?? input.id ?? nanoid(),
       briefVersion,
@@ -97,7 +101,7 @@ export class LogoProjectService {
       targetAudience: input.targetAudience,
       brandKeywords: input.brandKeywords,
       differentiator: input.differentiator,
-      avoidElements: input.avoidElements ?? existing?.avoidElements,
+      avoidElements,
       avoidedElements,
       preferredColors: input.preferredColors ?? [],
       avoidedColors: input.avoidedColors ?? [],

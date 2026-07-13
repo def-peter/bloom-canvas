@@ -117,20 +117,28 @@ describe('normalizeLogoBrief', () => {
     expect(result.dynamicExclusions).toContain('leaves')
   })
 
-  test.each(['不需要叶子，也非必须使用花瓣', '无需明确使用叶子，也不是必须使用花瓣'])(
-    'does not treat Chinese negated requirements as explicit requests: %s',
-    (referenceNote) => {
-      const result = normalizeLogoBrief({
-        ...brief,
-        referenceNote
-      })
+  test.each([
+    '不需要叶子，也非必须使用花瓣',
+    '无需明确使用叶子，也不是必须使用花瓣',
+    '明确不使用叶子',
+    '明确不包含叶子',
+    '必须不使用叶子',
+    '需要不包含叶子',
+    '明确不能包含叶子',
+    '明确不可包含叶子',
+    '明确排除叶子',
+    '明确去掉叶子'
+  ])('does not treat Chinese negated requirements as explicit requests: %s', (referenceNote) => {
+    const result = normalizeLogoBrief({
+      ...brief,
+      referenceNote
+    })
 
-      expect(result.explicitlyRequestedElements).not.toContain('leaves')
-      expect(result.explicitlyRequestedElements).not.toContain('flower petals')
-      expect(result.dynamicExclusions).toContain('leaves')
-      expect(result.dynamicExclusions).toContain('flower petals')
-    }
-  )
+    expect(result.explicitlyRequestedElements).not.toContain('leaves')
+    expect(result.explicitlyRequestedElements).not.toContain('flower petals')
+    expect(result.dynamicExclusions).toContain('leaves')
+    expect(result.dynamicExclusions).toContain('flower petals')
+  })
 
   test.each([
     ["don't include leaves", 'leaves'],
@@ -140,6 +148,54 @@ describe('normalizeLogoBrief', () => {
     (referenceNote, element) => {
       const result = normalizeLogoBrief({
         ...brief,
+        referenceNote
+      })
+
+      expect(result.explicitlyRequestedElements).not.toContain(element)
+      expect(result.dynamicExclusions).toContain(element)
+    }
+  )
+
+  test.each([
+    '不要叶子同时必须使用地球仪',
+    '不需要叶子并且需要地球仪',
+    'do not include leaves and must include a globe'
+  ])('uses the nearest directive for each element: %s', (referenceNote) => {
+    const result = normalizeLogoBrief({
+      ...brief,
+      brandName: 'Example',
+      brandNameAlt: undefined,
+      industry: '可持续品牌',
+      referenceNote
+    })
+
+    expect(result.explicitlyRequestedElements).toContain('globes')
+    expect(result.explicitlyRequestedElements).not.toContain('leaves')
+    expect(result.dynamicExclusions).not.toContain('globes')
+    expect(result.dynamicExclusions).toContain('leaves')
+  })
+
+  test('recognizes multiple elements under one positive directive', () => {
+    const result = normalizeLogoBrief({
+      ...brief,
+      referenceNote: 'must include leaves and globes'
+    })
+
+    expect(result.explicitlyRequestedElements).toEqual(expect.arrayContaining(['leaves', 'globes']))
+    expect(result.dynamicExclusions).not.toContain('leaves')
+    expect(result.dynamicExclusions).not.toContain('globes')
+  })
+
+  test.each([
+    ['Mustard Leaf is a neighborhood restaurant', 'leaves', 'AI 绘图软件'],
+    ['must include a leaflet', 'leaves', 'AI 绘图软件'],
+    ['must include blockchain links', 'locks', 'security software']
+  ])(
+    'requires English markers and aliases to be whole words: %s',
+    (referenceNote, element, industry) => {
+      const result = normalizeLogoBrief({
+        ...brief,
+        industry,
         referenceNote
       })
 
@@ -165,6 +221,13 @@ describe('logo brief fingerprints', () => {
 
     expect(createBriefFingerprint(recolored)).toBe(createBriefFingerprint(brief))
     expect(createPromptFingerprint(recolored)).not.toBe(createPromptFingerprint(brief))
+  })
+
+  test('tracks reference note changes in both fingerprints', () => {
+    const annotated = { ...brief, referenceNote: '必须使用一片叶子' }
+
+    expect(createBriefFingerprint(annotated)).not.toBe(createBriefFingerprint(brief))
+    expect(createPromptFingerprint(annotated)).not.toBe(createPromptFingerprint(brief))
   })
 
   test('sorts and deduplicates every array before fingerprinting', () => {

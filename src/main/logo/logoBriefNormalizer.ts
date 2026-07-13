@@ -55,33 +55,40 @@ const clicheRules: ClicheRule[] = [
 ]
 
 const elementAliases: ReadonlyArray<{ value: string; pattern: RegExp }> = [
-  { value: 'flower petals', pattern: /花瓣|flower petals?|petals?/i },
-  { value: 'leaves', pattern: /叶子|叶片|leaves|leaf/i },
-  { value: 'lotus', pattern: /莲花|lotus/i },
-  { value: 'bar charts', pattern: /柱状图|条形图|bar charts?/i },
-  { value: 'upward arrows', pattern: /上升箭头|upward arrows?/i },
-  { value: 'dashboard gauges', pattern: /仪表盘|dashboard gauges?/i },
-  { value: 'network nodes', pattern: /网络节点|network nodes?/i },
-  { value: 'locks', pattern: /锁|locks?/i },
-  { value: 'shields', pattern: /盾牌|shields?/i },
-  { value: 'keyholes', pattern: /钥匙孔|keyholes?/i },
-  { value: 'shadow people', pattern: /人物剪影|shadow people/i },
-  { value: 'brains', pattern: /大脑|brains?/i },
-  { value: 'circuit boards', pattern: /电路板|circuit boards?/i },
-  { value: 'robot heads', pattern: /机器人头(?:像)?|robot heads?/i },
-  { value: 'glowing sparkles', pattern: /发光闪烁|glowing sparkles?/i },
-  { value: 'globes', pattern: /地球仪|globes?/i },
-  { value: 'location pins', pattern: /定位图钉|location pins?/i },
-  { value: 'airplanes', pattern: /飞机|airplanes?/i },
-  { value: 'speed lines', pattern: /速度线|speed lines?/i },
-  { value: 'recycling arrows', pattern: /回收箭头|recycling arrows?/i }
+  { value: 'flower petals', pattern: /(?:花瓣|\b(?:flower petals?|petals?)\b)/i },
+  { value: 'leaves', pattern: /(?:叶子|叶片|\b(?:leaves|leaf)\b)/i },
+  { value: 'lotus', pattern: /(?:莲花|\blotus\b)/i },
+  { value: 'bar charts', pattern: /(?:柱状图|条形图|\bbar charts?\b)/i },
+  { value: 'upward arrows', pattern: /(?:上升箭头|\bupward arrows?\b)/i },
+  { value: 'dashboard gauges', pattern: /(?:仪表盘|\bdashboard gauges?\b)/i },
+  { value: 'network nodes', pattern: /(?:网络节点|\bnetwork nodes?\b)/i },
+  { value: 'locks', pattern: /(?:锁|\blocks?\b)/i },
+  { value: 'shields', pattern: /(?:盾牌|\bshields?\b)/i },
+  { value: 'keyholes', pattern: /(?:钥匙孔|\bkeyholes?\b)/i },
+  { value: 'shadow people', pattern: /(?:人物剪影|\bshadow people\b)/i },
+  { value: 'brains', pattern: /(?:大脑|\bbrains?\b)/i },
+  { value: 'circuit boards', pattern: /(?:电路板|\bcircuit boards?\b)/i },
+  { value: 'robot heads', pattern: /(?:机器人头(?:像)?|\brobot heads?\b)/i },
+  { value: 'glowing sparkles', pattern: /(?:发光闪烁|\bglowing sparkles?\b)/i },
+  { value: 'globes', pattern: /(?:地球仪|\bglobes?\b)/i },
+  { value: 'location pins', pattern: /(?:定位图钉|\blocation pins?\b)/i },
+  { value: 'airplanes', pattern: /(?:飞机|\bairplanes?\b)/i },
+  { value: 'speed lines', pattern: /(?:速度线|\bspeed lines?\b)/i },
+  { value: 'recycling arrows', pattern: /(?:回收箭头|\brecycling arrows?\b)/i }
 ]
 
-const requirementMarker =
-  /(?:必须|需要|明确(?:要求)?(?:使用|包含)?|must|include(?:s|d)?|require(?:s|d)?|required)/i
-const negativeRequirementMarker =
-  /(?:\b(?:not|no|never|cannot|avoid|exclude|without|(?:don|doesn|didn|isn|aren|wasn|weren|can|couldn|wouldn|shouldn|mustn|needn|won|shan|haven|hasn|hadn)['’]t)\b|不需要|无需|无须|不必|非必须|不是必须|并非必须|不要求|不要|避免|禁止|不能使用|不可使用|不(?:推荐|建议)(?:使用)?)/i
+const positiveDirectivePattern =
+  /(?:必须(?:使用|包含)?|需要(?:使用|包含)?|明确(?:要求)?(?:使用|包含)|\bmust(?:\s+(?:use|include))?\b|\binclude(?:s|d)?\b|\brequire(?:s|d)?(?:\s+to\s+(?:use|include))?\b)/gi
+const negativeDirectivePattern =
+  /(?:(?:明确)?(?:不(?:使用|包含)|不能(?:使用|包含)|不可(?:使用|包含)|排除|去掉)|(?:必须|需要)不(?:使用|包含)|不需要(?:使用|包含)?|(?:无需|无须)(?:明确)?(?:使用|包含)?|不必(?:使用|包含)?|非必须(?:使用|包含)?|(?:不是|并非)必须(?:使用|包含)?|不要求(?:使用|包含)?|不要(?:使用|包含)?|避免(?:使用|包含)?|禁止(?:使用|包含)?|不(?:推荐|建议)(?:使用|包含)?|\b(?:(?:do(?:es)?|did|must|should|need|can|could|would|will)\s+not|(?:don|doesn|didn|isn|aren|wasn|weren|can|couldn|wouldn|shouldn|mustn|needn|won|shan|haven|hasn|hadn)['’]t|not|never|cannot|no(?:\s+need\s+to)?)\s+(?:use|include|require(?:d)?)\b|\b(?:avoid|exclude|without)\b)/gi
 const clauseBoundary = /[\n。；;.!?！？，,]|\bbut\b|但/i
+
+type DirectiveKind = 'positive' | 'negative'
+
+interface DirectiveMatch {
+  kind: DirectiveKind
+  end: number
+}
 
 export function normalizeLogoBrief(input: LogoBrandBriefV2): NormalizedLogoBrief {
   const brief = normalizeBrief(input)
@@ -192,18 +199,47 @@ function findExplicitlyRequestedElements(texts: readonly string[]): string[] {
 
   return elementAliases
     .filter(({ pattern }) =>
-      clauses.some((clause) => {
-        const elementMatch = clause.match(pattern)
-        if (elementMatch?.index === undefined) return false
-
-        const requirementContext = clause.slice(0, elementMatch.index)
-        return (
-          requirementMarker.test(requirementContext) &&
-          !negativeRequirementMarker.test(requirementContext)
-        )
-      })
+      clauses.some((clause) => isExplicitlyRequestedInClause(clause, pattern))
     )
     .map(({ value }) => value)
+}
+
+function isExplicitlyRequestedInClause(clause: string, elementPattern: RegExp): boolean {
+  const directives = [
+    ...findPatternMatches(clause, positiveDirectivePattern).map((match) =>
+      toDirectiveMatch(match, 'positive')
+    ),
+    ...findPatternMatches(clause, negativeDirectivePattern).map((match) =>
+      toDirectiveMatch(match, 'negative')
+    )
+  ]
+
+  return findPatternMatches(clause, elementPattern).some((elementMatch) => {
+    const elementStart = elementMatch.index ?? -1
+    const nearestDirective = directives
+      .filter((directive) => directive.end <= elementStart)
+      .sort(compareDirectives)[0]
+
+    return nearestDirective?.kind === 'positive'
+  })
+}
+
+function findPatternMatches(text: string, pattern: RegExp): RegExpMatchArray[] {
+  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`
+  return [...text.matchAll(new RegExp(pattern.source, flags))]
+}
+
+function toDirectiveMatch(match: RegExpMatchArray, kind: DirectiveKind): DirectiveMatch {
+  return {
+    kind,
+    end: (match.index ?? 0) + match[0].length
+  }
+}
+
+function compareDirectives(left: DirectiveMatch, right: DirectiveMatch): number {
+  if (left.end !== right.end) return right.end - left.end
+  if (left.kind === right.kind) return 0
+  return left.kind === 'negative' ? -1 : 1
 }
 
 function matchingRules(text: string): ClicheRule[] {

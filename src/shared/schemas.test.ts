@@ -1,12 +1,79 @@
 import { describe, expect, test } from 'vitest'
+import { logoTestPromptPack } from './logoDesign.testFixtures'
 import {
   buildLogoPromptPackSchema,
   createGenerationSchema,
+  logoDesignRevisionSchema,
   logoPromptPackSchema,
+  logoStrategyPromptPackSchema,
   saveLogoProjectSchema
 } from './schemas'
 
+const validStrategy = {
+  id: 'strategy-path',
+  version: 1,
+  nameZh: '连续创作路径',
+  summaryZh: '用一条展开路径表达从想法到画面的过程。',
+  grammarId: 'continuous-path',
+  brandEvidence: ['帮助创作者把想法转化为图片'],
+  coreMetaphor: 'an unfolding creative path',
+  construction: 'one broad continuous ribbon with two turns',
+  silhouette: 'compact open loop',
+  composition: 'centered with a stable lower-left visual anchor',
+  colorPlan: 'one solid blue with a monochrome fallback',
+  recommendedRenderStyles: ['flat-monochrome', 'flat-duotone'],
+  exclusions: ['flower petals', 'leaves', 'pseudo-text'],
+  rationaleZh: '连续路径对应创作流程，不依赖品牌名中的花。',
+  imagePromptEn: 'Create exactly one standalone logo mark.'
+} as const
+
 describe('logo schemas', () => {
+  test('accepts a complete three-strategy design revision', () => {
+    const revision = logoDesignRevisionSchema.parse({
+      briefVersion: 1,
+      strategyVersion: 1,
+      grammarLibraryVersion: 1,
+      semantics: {
+        functionalTruths: ['帮助创作者把想法转化为图片'],
+        emotionalQualities: ['清晰', '有创造力'],
+        differentiators: ['轻量工作流'],
+        audienceSignals: ['个人创作者'],
+        usableMetaphors: ['路径', '画布窗口'],
+        literalMetaphorRisks: ['花瓣', '叶片'],
+        industryCliches: ['AI sparkle', 'robot head'],
+        usageConstraints: ['readable at 32px']
+      },
+      strategies: [
+        validStrategy,
+        { ...validStrategy, id: 'strategy-frame', grammarId: 'frame-threshold' },
+        { ...validStrategy, id: 'strategy-grid', grammarId: 'modular-grid' }
+      ],
+      selectedStrategyIds: ['strategy-path', 'strategy-frame', 'strategy-grid'],
+      createdAt: '2026-07-13T00:00:00.000Z'
+    })
+
+    expect(revision.strategies).toHaveLength(3)
+  })
+
+  test('rejects a prompt pack whose source versions are missing', () => {
+    expect(() =>
+      logoStrategyPromptPackSchema.parse({
+        directions: [{ strategyId: 'strategy-path', finalPrompt: 'one logo' }]
+      })
+    ).toThrow()
+  })
+
+  test('rejects a prompt direction whose source prompt version is missing', () => {
+    expect(() =>
+      logoStrategyPromptPackSchema.parse({
+        ...logoTestPromptPack,
+        directions: logoTestPromptPack.directions.map((direction, index) =>
+          index === 0 ? { ...direction, sourcePromptVersion: undefined } : direction
+        )
+      })
+    ).toThrow()
+  })
+
   test('accepts a minimal logo project brief', () => {
     const result = saveLogoProjectSchema.parse({
       brandName: '生花',
@@ -21,6 +88,20 @@ describe('logo schemas', () => {
     expect(result.brandName).toBe('生花')
     expect(result.styleDirections).toHaveLength(2)
     expect(buildLogoPromptPackSchema.parse(result).brandName).toBe('生花')
+  })
+
+  test('defaults legacy style directions only when saving a project', () => {
+    const input = {
+      brandName: '生花',
+      industry: 'AI 绘图软件',
+      businessDescription: '帮助创作者用 AI 生成图片',
+      brandKeywords: ['清晰'],
+      logoTypes: ['combination-mark'],
+      referenceImageIds: []
+    }
+
+    expect(saveLogoProjectSchema.parse(input).styleDirections).toEqual([])
+    expect(() => buildLogoPromptPackSchema.parse(input)).toThrow()
   })
 
   test('rejects more than four style directions', () => {

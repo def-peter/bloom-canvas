@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react'
 import type {
   AppSettings,
   Asset,
+  BuildLogoPromptPackInput,
   GenerationParameters,
   GenerationRecord,
   LogoProject,
@@ -22,8 +23,7 @@ import type {
   LogoStyleDirectionId,
   LogoType,
   LogoUsageScenario,
-  ProviderConfig,
-  SaveLogoProjectInput
+  ProviderConfig
 } from '../../../../shared/types'
 import { bloomCanvasClient } from '../../api/bloomCanvasClient'
 import { assertGenerationSucceeded } from '../../utils/generationStatus'
@@ -142,7 +142,7 @@ function toProjectInput(
   project: LogoProject | null,
   referenceAssets: Asset[],
   promptPack?: LogoPromptPack
-): SaveLogoProjectInput {
+): BuildLogoPromptPackInput {
   return {
     id: project?.id,
     brandName: values.brandName,

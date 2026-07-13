@@ -1,3 +1,12 @@
+import type {
+  LogoDesignRevision,
+  LogoStrategyPromptPack,
+  LogoType,
+  LogoUsageScenario
+} from './logoDesign'
+
+export type * from './logoDesign'
+
 export type ProviderId = string
 export type GenerationId = string
 export type AssetId = string
@@ -10,7 +19,6 @@ export type GenerationStatus = 'pending' | 'running' | 'succeeded' | 'failed'
 export type AssetType = 'reference' | 'output'
 export type ImageQuality = 'standard' | 'hd'
 export type OutputFormat = 'png' | 'jpeg' | 'webp'
-export type LogoType = 'symbol-mark' | 'wordmark' | 'combination-mark' | 'lettermark' | 'emblem'
 export type LogoStyleDirectionId =
   | 'modern-minimal'
   | 'symbolic-mark'
@@ -21,9 +29,6 @@ export type LogoStyleDirectionId =
   | 'friendly-rounded'
   | 'eastern-modern'
   | 'premium-restraint'
-export type LogoUsageScenario =
-  'app-icon' | 'website' | 'ecommerce' | 'packaging' | 'storefront' | 'social-avatar'
-
 export interface GenerationParameters {
   size: '1024x1024' | '1024x1536' | '1536x1024' | 'auto'
   count: number
@@ -90,6 +95,10 @@ export interface LogoPromptPack {
 
 export interface LogoProject {
   id: LogoProjectId
+  briefVersion?: number
+  briefFingerprint?: string
+  promptVersion?: number
+  promptFingerprint?: string
   brandName: string
   brandNameAlt?: string
   shortName?: string
@@ -100,6 +109,7 @@ export interface LogoProject {
   brandKeywords: string[]
   differentiator?: string
   avoidElements?: string
+  avoidedElements?: string[]
   preferredColors: string[]
   avoidedColors: string[]
   logoTypes: LogoType[]
@@ -108,6 +118,8 @@ export interface LogoProject {
   referenceImageIds: AssetId[]
   referenceNote?: string
   promptPack?: LogoPromptPack
+  designRevision?: LogoDesignRevision
+  strategyPromptPack?: LogoStrategyPromptPack
   generationIds: GenerationId[]
   favoriteVariantIds: VariantId[]
   createdAt: string
@@ -204,6 +216,10 @@ export interface PromptOptimizeInput {
 
 export interface SaveLogoProjectInput {
   id?: LogoProjectId
+  briefVersion?: number
+  briefFingerprint?: string
+  promptVersion?: number
+  promptFingerprint?: string
   brandName: string
   brandNameAlt?: string
   shortName?: string
@@ -214,18 +230,22 @@ export interface SaveLogoProjectInput {
   brandKeywords: string[]
   differentiator?: string
   avoidElements?: string
+  avoidedElements?: string[]
   preferredColors?: string[]
   avoidedColors?: string[]
   logoTypes: LogoType[]
-  styleDirections: LogoStyleDirectionId[]
+  styleDirections?: LogoStyleDirectionId[]
   usageScenarios?: LogoUsageScenario[]
   referenceImageIds: AssetId[]
   referenceNote?: string
   promptPack?: LogoPromptPack
+  designRevision?: LogoDesignRevision
+  strategyPromptPack?: LogoStrategyPromptPack
 }
 
 export interface BuildLogoPromptPackInput extends SaveLogoProjectInput {
   id?: LogoProjectId
+  styleDirections: LogoStyleDirectionId[]
 }
 
 export interface AppErrorPayload {

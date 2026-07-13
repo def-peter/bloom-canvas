@@ -11,7 +11,7 @@ import type { StorageService } from './storageService'
 
 function promptPackMatchesDirections(
   promptPack: LogoPromptPack | undefined,
-  styleDirections: SaveLogoProjectInput['styleDirections']
+  styleDirections: NonNullable<SaveLogoProjectInput['styleDirections']>
 ): promptPack is LogoPromptPack {
   if (!promptPack) return false
   const promptDirectionIds = promptPack.directions.map((direction) => direction.id)
@@ -19,6 +19,13 @@ function promptPackMatchesDirections(
     promptDirectionIds.length === styleDirections.length &&
     promptDirectionIds.every((id, index) => id === styleDirections[index])
   )
+}
+
+function migrateAvoidedElements(avoidElements: string | undefined): string[] {
+  return (avoidElements ?? '')
+    .split(/[,，、\n]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
 export class LogoProjectService {
@@ -42,11 +49,25 @@ export class LogoProjectService {
     const existing = input.id
       ? state.logoProjects.find((project) => project.id === input.id)
       : undefined
-    const promptPack = promptPackMatchesDirections(input.promptPack, input.styleDirections)
+    const styleDirections = input.styleDirections ?? existing?.styleDirections ?? []
+    const promptPack = promptPackMatchesDirections(input.promptPack, styleDirections)
       ? input.promptPack
-      : buildLogoPromptPack(input)
+      : styleDirections.length > 0
+        ? buildLogoPromptPack({ ...input, styleDirections })
+        : undefined
+    const briefVersion = input.briefVersion ?? existing?.briefVersion
+    const avoidedElements =
+      input.avoidedElements ??
+      existing?.avoidedElements ??
+      (briefVersion === undefined
+        ? undefined
+        : migrateAvoidedElements(input.avoidElements ?? existing?.avoidElements))
     const nextProject: LogoProject = {
       id: existing?.id ?? input.id ?? nanoid(),
+      briefVersion,
+      briefFingerprint: input.briefFingerprint ?? existing?.briefFingerprint,
+      promptVersion: input.promptVersion ?? existing?.promptVersion,
+      promptFingerprint: input.promptFingerprint ?? existing?.promptFingerprint,
       brandName: input.brandName,
       brandNameAlt: input.brandNameAlt,
       shortName: input.shortName,
@@ -57,14 +78,17 @@ export class LogoProjectService {
       brandKeywords: input.brandKeywords,
       differentiator: input.differentiator,
       avoidElements: input.avoidElements,
+      avoidedElements,
       preferredColors: input.preferredColors ?? [],
       avoidedColors: input.avoidedColors ?? [],
       logoTypes: input.logoTypes,
-      styleDirections: input.styleDirections,
+      styleDirections,
       usageScenarios: input.usageScenarios ?? [],
       referenceImageIds: input.referenceImageIds,
       referenceNote: input.referenceNote,
       promptPack,
+      designRevision: input.designRevision ?? existing?.designRevision,
+      strategyPromptPack: input.strategyPromptPack ?? existing?.strategyPromptPack,
       generationIds: existing?.generationIds ?? [],
       favoriteVariantIds: existing?.favoriteVariantIds ?? [],
       createdAt: existing?.createdAt ?? now,

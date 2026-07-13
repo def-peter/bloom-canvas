@@ -15,6 +15,34 @@ export const logoTypeSchema = z.enum([
   'emblem'
 ])
 
+export const logoGrammarIdSchema = z.enum([
+  'negative-space-fusion',
+  'monogram-synthesis',
+  'semantic-hybrid',
+  'continuous-path',
+  'modular-grid',
+  'interlocking-units',
+  'frame-threshold',
+  'fold-unfold',
+  'radial-core',
+  'signal-rhythm',
+  'custom-wordmark',
+  'symbol-as-system',
+  'simplified-character',
+  'dynamic-aperture'
+])
+
+export const logoRenderStyleSchema = z.enum([
+  'flat-monochrome',
+  'flat-duotone',
+  'restrained-gradient',
+  'bold-outline',
+  'soft-2.5d',
+  'soft-volume',
+  'embossed',
+  'skeuomorphic'
+])
+
 export const logoStyleDirectionSchema = z.enum([
   'modern-minimal',
   'symbolic-mark',
@@ -36,6 +64,113 @@ export const logoUsageScenarioSchema = z.enum([
   'social-avatar'
 ])
 
+const logoSemanticListSchema = z.array(z.string().trim().min(1).max(240)).max(12)
+
+export const logoBrandBriefV2Schema = z.object({
+  brandName: z.string().trim().min(1).max(120),
+  brandNameAlt: z.string().trim().max(120).optional(),
+  shortName: z.string().trim().max(40).optional(),
+  industry: z.string().trim().min(1).max(120),
+  businessDescription: z.string().trim().min(1).max(1200),
+  targetAudience: z.string().trim().max(400).optional(),
+  brandKeywords: z.array(z.string().trim().min(1).max(40)).min(1).max(6),
+  differentiator: z.string().trim().max(600).optional(),
+  avoidedElements: z.array(z.string().trim().min(1).max(120)).max(12),
+  preferredColors: z.array(z.string().trim().min(1).max(40)).max(8),
+  avoidedColors: z.array(z.string().trim().min(1).max(40)).max(8),
+  logoType: logoTypeSchema,
+  usageScenarios: z.array(logoUsageScenarioSchema).min(1).max(6),
+  referenceNote: z.string().trim().max(600).optional()
+})
+
+export const logoBrandSemanticsSchema = z.object({
+  functionalTruths: logoSemanticListSchema,
+  emotionalQualities: logoSemanticListSchema,
+  differentiators: logoSemanticListSchema,
+  audienceSignals: logoSemanticListSchema,
+  usableMetaphors: logoSemanticListSchema,
+  literalMetaphorRisks: logoSemanticListSchema,
+  industryCliches: logoSemanticListSchema,
+  usageConstraints: logoSemanticListSchema
+})
+
+export const logoGrammarCardSchema = z.object({
+  id: logoGrammarIdSchema,
+  nameZh: z.string().trim().min(1).max(40),
+  mechanism: z.string().trim().min(1).max(400),
+  fitSignals: z.array(z.string().trim().min(1).max(240)).max(12),
+  conflictSignals: z.array(z.string().trim().min(1).max(240)).max(12),
+  allowedLogoTypes: z.array(logoTypeSchema).min(1).max(5),
+  constructionRules: z.array(z.string().trim().min(1).max(400)).max(12),
+  antiPatterns: z.array(z.string().trim().min(1).max(400)).max(12),
+  promptFragments: z.array(z.string().trim().min(1).max(1200)).max(12),
+  reviewRules: z.array(z.string().trim().min(1).max(400)).max(12),
+  sourceRefs: z.array(z.string().trim().min(1).max(240)).max(12)
+})
+
+export const logoDesignStrategySchema = z.object({
+  id: z.string().trim().min(1).max(80),
+  version: z.number().int().positive(),
+  nameZh: z.string().trim().min(1).max(40),
+  summaryZh: z.string().trim().min(1).max(240),
+  grammarId: logoGrammarIdSchema,
+  brandEvidence: z.array(z.string().trim().min(1).max(240)).min(1).max(4),
+  coreMetaphor: z.string().trim().min(1).max(240),
+  construction: z.string().trim().min(1).max(400),
+  silhouette: z.string().trim().min(1).max(240),
+  composition: z.string().trim().min(1).max(240),
+  colorPlan: z.string().trim().min(1).max(240),
+  recommendedRenderStyles: z.array(logoRenderStyleSchema).min(1).max(4),
+  exclusions: z.array(z.string().trim().min(1).max(120)).min(1).max(12),
+  rationaleZh: z.string().trim().min(1).max(400),
+  imagePromptEn: z.string().trim().min(1).max(12000)
+})
+
+export const logoDesignRevisionSchema = z.object({
+  briefVersion: z.number().int().positive(),
+  strategyVersion: z.number().int().positive(),
+  grammarLibraryVersion: z.literal(1),
+  semantics: logoBrandSemanticsSchema,
+  strategies: z.array(logoDesignStrategySchema).length(3),
+  selectedStrategyIds: z.array(z.string().trim().min(1).max(80)).length(3),
+  createdAt: z.string().datetime()
+})
+
+export const logoStrategyPromptDirectionSchema = z.object({
+  strategyId: z.string().trim().min(1).max(80),
+  strategyNameZh: z.string().trim().min(1).max(40),
+  grammarId: logoGrammarIdSchema,
+  sourceBriefVersion: z.number().int().positive(),
+  sourceStrategyVersion: z.number().int().positive(),
+  sourcePromptVersion: z.number().int().positive(),
+  renderStyle: logoRenderStyleSchema,
+  finalPrompt: z.string().trim().min(1).max(12000),
+  customized: z.boolean()
+})
+
+export const logoStrategyPromptPackSchema = z.object({
+  sourceBriefVersion: z.number().int().positive(),
+  sourceStrategyVersion: z.number().int().positive(),
+  sourcePromptVersion: z.number().int().positive(),
+  grammarLibraryVersion: z.literal(1),
+  directions: z.array(logoStrategyPromptDirectionSchema).length(3)
+})
+
+export const generateLogoStrategiesSchema = z.object({
+  providerId: z.string().min(1),
+  briefVersion: z.number().int().positive(),
+  brief: logoBrandBriefV2Schema,
+  existingRevision: logoDesignRevisionSchema.optional(),
+  replaceStrategyId: z.string().min(1).optional()
+})
+
+export const buildLogoStrategyPromptPackSchema = z.object({
+  brief: logoBrandBriefV2Schema,
+  revision: logoDesignRevisionSchema,
+  promptVersion: z.number().int().positive(),
+  renderStyles: z.record(z.string().min(1), logoRenderStyleSchema).optional()
+})
+
 export const logoPromptDirectionSchema = z.object({
   id: logoStyleDirectionSchema,
   name: z.string().trim().min(1),
@@ -50,6 +185,10 @@ export const logoPromptPackSchema = z.object({
 
 export const saveLogoProjectSchema = z.object({
   id: z.string().min(1).optional(),
+  briefVersion: z.number().int().positive().optional(),
+  briefFingerprint: z.string().min(1).optional(),
+  promptVersion: z.number().int().positive().optional(),
+  promptFingerprint: z.string().min(1).optional(),
   brandName: z.string().trim().min(1).max(120),
   brandNameAlt: z.string().trim().max(120).optional(),
   shortName: z.string().trim().max(40).optional(),
@@ -60,17 +199,22 @@ export const saveLogoProjectSchema = z.object({
   brandKeywords: z.array(z.string().trim().min(1).max(40)).min(1).max(6),
   differentiator: z.string().trim().max(600).optional(),
   avoidElements: z.string().trim().max(600).optional(),
+  avoidedElements: z.array(z.string().trim().min(1).max(120)).max(12).optional(),
   preferredColors: z.array(z.string().trim().min(1).max(40)).max(8).default([]),
   avoidedColors: z.array(z.string().trim().min(1).max(40)).max(8).default([]),
   logoTypes: z.array(logoTypeSchema).min(1).max(1),
-  styleDirections: z.array(logoStyleDirectionSchema).min(1).max(3),
+  styleDirections: z.array(logoStyleDirectionSchema).max(3).default([]),
   usageScenarios: z.array(logoUsageScenarioSchema).max(6).default([]),
   referenceImageIds: z.array(z.string().min(1)).max(8),
   referenceNote: z.string().trim().max(600).optional(),
-  promptPack: logoPromptPackSchema.optional()
+  promptPack: logoPromptPackSchema.optional(),
+  designRevision: logoDesignRevisionSchema.optional(),
+  strategyPromptPack: logoStrategyPromptPackSchema.optional()
 })
 
-export const buildLogoPromptPackSchema = saveLogoProjectSchema
+export const buildLogoPromptPackSchema = saveLogoProjectSchema.extend({
+  styleDirections: z.array(logoStyleDirectionSchema).min(1).max(3)
+})
 
 export const logoBriefSnapshotSchema = z.object({
   brandName: z.string().trim().min(1),

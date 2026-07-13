@@ -203,6 +203,42 @@ describe('normalizeLogoBrief', () => {
       expect(result.dynamicExclusions).toContain(element)
     }
   )
+
+  test.each([
+    'not required to include leaves',
+    "isn't required to include leaves",
+    'isn’t required to include leaves',
+    'do not require the logo to include leaves',
+    '不要求必须使用叶子',
+    '不需要明确使用叶子'
+  ])('keeps nested negated requirements excluded: %s', (referenceNote) => {
+    const result = normalizeLogoBrief({
+      ...brief,
+      referenceNote
+    })
+
+    expect(result.explicitlyRequestedElements).not.toContain('leaves')
+    expect(result.dynamicExclusions).toContain('leaves')
+  })
+
+  test.each([
+    ['include no leaves', ['leaves']],
+    ['must use no leaves', ['leaves']],
+    ['must omit leaves', ['leaves']],
+    ['must remove leaves', ['leaves']],
+    ['include neither leaves nor globes', ['leaves', 'globes']]
+  ])('keeps explicitly negated elements excluded: %s', (referenceNote, elements) => {
+    const result = normalizeLogoBrief({
+      ...brief,
+      industry: '可持续 AI 绘图软件',
+      referenceNote
+    })
+
+    for (const element of elements) {
+      expect(result.explicitlyRequestedElements).not.toContain(element)
+      expect(result.dynamicExclusions).toContain(element)
+    }
+  })
 })
 
 describe('logo brief fingerprints', () => {

@@ -80,7 +80,7 @@ const elementAliases: ReadonlyArray<{ value: string; pattern: RegExp }> = [
 const positiveDirectivePattern =
   /(?:必须(?:使用|包含)?|需要(?:使用|包含)?|明确(?:要求)?(?:使用|包含)|\bmust(?:\s+(?:use|include))?\b|\binclude(?:s|d)?\b|\brequire(?:s|d)?(?:\s+to\s+(?:use|include))?\b)/gi
 const negativeDirectivePattern =
-  /(?:(?:明确)?(?:不(?:使用|包含)|不能(?:使用|包含)|不可(?:使用|包含)|排除|去掉)|(?:必须|需要)不(?:使用|包含)|不需要(?:使用|包含)?|(?:无需|无须)(?:明确)?(?:使用|包含)?|不必(?:使用|包含)?|非必须(?:使用|包含)?|(?:不是|并非)必须(?:使用|包含)?|不要求(?:使用|包含)?|不要(?:使用|包含)?|避免(?:使用|包含)?|禁止(?:使用|包含)?|不(?:推荐|建议)(?:使用|包含)?|\b(?:(?:do(?:es)?|did|must|should|need|can|could|would|will)\s+not|(?:don|doesn|didn|isn|aren|wasn|weren|can|couldn|wouldn|shouldn|mustn|needn|won|shan|haven|hasn|hadn)['’]t|not|never|cannot|no(?:\s+need\s+to)?)\s+(?:use|include|require(?:d)?)\b|\b(?:avoid|exclude|without)\b)/gi
+  /(?:(?:明确)?(?:不(?:使用|包含)|不能(?:使用|包含)|不可(?:使用|包含)|排除|去掉)|(?:必须|需要)不(?:使用|包含)|(?:不需要|不要求)(?:(?:必须|需要|明确)(?:使用|包含)?|使用|包含)?|(?:无需|无须)(?:明确)?(?:使用|包含)?|不必(?:使用|包含)?|非必须(?:使用|包含)?|(?:不是|并非)必须(?:使用|包含)?|不要(?:使用|包含)?|避免(?:使用|包含)?|禁止(?:使用|包含)?|不(?:推荐|建议)(?:使用|包含)?|\b(?:(?:do(?:es)?|did|must|should|need|can|could|would|will)\s+not|(?:don|doesn|didn|isn|aren|wasn|weren|can|couldn|wouldn|shouldn|mustn|needn|won|shan|haven|hasn|hadn)['’]t|not|never|cannot|no(?:\s+need\s+to)?)\s+(?:use|include|require(?:d)?(?:\s+(?:the\s+logo\s+)?to\s+(?:use|include))?)\b|\b(?:avoid|exclude|without|no|neither|nor|omit|remove)\b)/gi
 const clauseBoundary = /[\n。；;.!?！？，,]|\bbut\b|但/i
 
 type DirectiveKind = 'positive' | 'negative'

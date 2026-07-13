@@ -64,7 +64,13 @@ export const logoUsageScenarioSchema = z.enum([
   'social-avatar'
 ])
 
-export const avoidedElementsSchema = z.array(z.string().trim().min(1).max(120)).max(12)
+export const avoidedElementsSchema = z
+  .array(z.string().trim().min(1).max(120))
+  .max(12)
+  .refine((elements) => elements.join('，').length <= 600, {
+    message:
+      'Logo exclusion validation failed: total serialized length must not exceed 600 characters'
+  })
 
 const logoSemanticListSchema = z.array(z.string().trim().min(1).max(240)).max(12)
 

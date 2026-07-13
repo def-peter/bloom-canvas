@@ -202,6 +202,51 @@ describe('LogoProjectService', () => {
     expect(afterLegacySave.avoidedElements).toEqual(['new leaf', 'open canvas'])
   })
 
+  test('accepts 600 serialized exclusion characters and rejects 601 before writing', async () => {
+    const existing = legacyProject({
+      briefVersion: 1,
+      avoidElements: '保留旧值',
+      avoidedElements: ['保留旧值']
+    })
+    await seedProject(existing)
+
+    const exactly600 = [
+      'a'.repeat(120),
+      'b'.repeat(120),
+      'c'.repeat(120),
+      'd'.repeat(120),
+      'e'.repeat(116)
+    ]
+    const exactly601 = [...exactly600.slice(0, -1), 'e'.repeat(117)]
+    expect(exactly600.join('，')).toHaveLength(600)
+    expect(exactly601.join('，')).toHaveLength(601)
+
+    const acceptedInput = parseProjectUpdate(existing, { avoidedElements: exactly600 })
+    await service.save(acceptedInput)
+
+    const afterAcceptedSave = await readPersistedProject(existing.id)
+    expect(afterAcceptedSave.avoidElements).toHaveLength(600)
+    expect(afterAcceptedSave.avoidedElements).toEqual(exactly600)
+
+    const legacyInput = parseProjectUpdate(afterAcceptedSave, {
+      avoidElements: afterAcceptedSave.avoidElements
+    })
+    await service.save(legacyInput)
+
+    await expect(
+      (async () => {
+        const rejectedInput = parseProjectUpdate(afterAcceptedSave, {
+          avoidedElements: exactly601
+        })
+        return service.save(rejectedInput)
+      })()
+    ).rejects.toThrow(/validation.*total.*600/i)
+
+    const afterRejectedSave = await readPersistedProject(existing.id)
+    expect(afterRejectedSave.avoidElements).toBe(exactly600.join('，'))
+    expect(afterRejectedSave.avoidedElements).toEqual(exactly600)
+  })
+
   test.each([
     ['a 121-character item', 'x'.repeat(121)],
     ['13 items', Array.from({ length: 13 }, (_, index) => `item-${index + 1}`).join(',')]

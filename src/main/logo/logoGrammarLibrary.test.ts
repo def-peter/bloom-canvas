@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'vitest'
-import type { LogoType } from '../../shared/logoDesign'
+import { describe, expect, expectTypeOf, test } from 'vitest'
+import type { LogoGrammarCard, LogoType } from '../../shared/logoDesign'
 import { LOGO_GRAMMAR_LIBRARY_VERSION, logoGrammarCards } from './logoGrammarLibrary'
 
 const logoTypes = [
@@ -42,6 +42,19 @@ const sourceBrandTokens = new Set([
   'moco'
 ])
 
+const wordmarkGrammarIds = ['custom-wordmark', 'modular-grid', 'symbol-as-system'] as const
+
+const grammarArrayFields = [
+  'fitSignals',
+  'conflictSignals',
+  'allowedLogoTypes',
+  'constructionRules',
+  'antiPatterns',
+  'promptFragments',
+  'reviewRules',
+  'sourceRefs'
+] as const satisfies readonly (keyof LogoGrammarCard)[]
+
 describe('logoGrammarCards', () => {
   test('contains 14 complete and unique grammar cards', () => {
     expect(LOGO_GRAMMAR_LIBRARY_VERSION).toBe(1)
@@ -72,8 +85,54 @@ describe('logoGrammarCards', () => {
     }
   })
 
-  test('exports a runtime-readonly grammar card array', () => {
+  test('uses three distinct and executable wordmark grammars', () => {
+    const wordmarkCards = logoGrammarCards.filter((card) =>
+      card.allowedLogoTypes.includes('wordmark')
+    )
+
+    expect(wordmarkCards.map((card) => card.id).sort()).toEqual([...wordmarkGrammarIds].sort())
+    expect(new Set(wordmarkCards.map((card) => card.mechanism)).size).toBe(3)
+  })
+
+  test('gives every wordmark grammar exact full-name and per-character rules', () => {
+    const wordmarkCards = logoGrammarCards.filter((card) =>
+      card.allowedLogoTypes.includes('wordmark')
+    )
+
+    for (const card of wordmarkCards) {
+      const promptText = card.promptFragments.join(' ')
+      const constructionText = card.constructionRules.join(' ')
+      const reviewText = card.reviewRules.join(' ')
+
+      expect(promptText).toMatch(/exact full brand name/i)
+      expect(promptText).toMatch(/every character/i)
+      expect(constructionText).toMatch(/exact full brand name/i)
+      expect(constructionText).toMatch(/every character/i)
+      expect(reviewText).toMatch(/every character/i)
+      expect(reviewText).toMatch(/correct/i)
+      expect(reviewText).toMatch(/readable/i)
+    }
+  })
+
+  test('types every grammar card collection as readonly', () => {
+    expectTypeOf<LogoGrammarCard['fitSignals']>().toEqualTypeOf<readonly string[]>()
+    expectTypeOf<LogoGrammarCard['conflictSignals']>().toEqualTypeOf<readonly string[]>()
+    expectTypeOf<LogoGrammarCard['allowedLogoTypes']>().toEqualTypeOf<readonly LogoType[]>()
+    expectTypeOf<LogoGrammarCard['constructionRules']>().toEqualTypeOf<readonly string[]>()
+    expectTypeOf<LogoGrammarCard['antiPatterns']>().toEqualTypeOf<readonly string[]>()
+    expectTypeOf<LogoGrammarCard['promptFragments']>().toEqualTypeOf<readonly string[]>()
+    expectTypeOf<LogoGrammarCard['reviewRules']>().toEqualTypeOf<readonly string[]>()
+    expectTypeOf<LogoGrammarCard['sourceRefs']>().toEqualTypeOf<readonly string[]>()
+  })
+
+  test('deep-freezes the grammar library', () => {
     expect(Object.isFrozen(logoGrammarCards)).toBe(true)
+    for (const card of logoGrammarCards) {
+      expect(Object.isFrozen(card)).toBe(true)
+      for (const field of grammarArrayFields) {
+        expect(Object.isFrozen(card[field])).toBe(true)
+      }
+    }
   })
 
   test('does not leak source brands into any production field', () => {

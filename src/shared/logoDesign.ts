@@ -58,17 +58,17 @@ export interface LogoBrandSemantics {
 }
 
 export interface LogoGrammarCard {
-  id: LogoGrammarId
-  nameZh: string
-  mechanism: string
-  fitSignals: string[]
-  conflictSignals: string[]
-  allowedLogoTypes: LogoType[]
-  constructionRules: string[]
-  antiPatterns: string[]
-  promptFragments: string[]
-  reviewRules: string[]
-  sourceRefs: string[]
+  readonly id: LogoGrammarId
+  readonly nameZh: string
+  readonly mechanism: string
+  readonly fitSignals: readonly string[]
+  readonly conflictSignals: readonly string[]
+  readonly allowedLogoTypes: readonly LogoType[]
+  readonly constructionRules: readonly string[]
+  readonly antiPatterns: readonly string[]
+  readonly promptFragments: readonly string[]
+  readonly reviewRules: readonly string[]
+  readonly sourceRefs: readonly string[]
 }
 
 export interface LogoDesignStrategy {

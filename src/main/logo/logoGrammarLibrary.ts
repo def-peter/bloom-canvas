@@ -51,12 +51,14 @@ const grammarEvidence = {
   },
   'modular-grid': {
     promptFragments: [
-      'arrange two to four repeated modules on a clear grid',
-      'make the outer boundary read before individual modules'
+      'arrange repetitions of two to four modular primitives on a clear grid',
+      'make the outer boundary read before individual modules',
+      'when used for a wordmark, construct every character of the exact full brand name from the same modular primitives'
     ],
     reviewRules: [
       'the mark does not resemble a QR code',
-      'the module count remains immediately scannable'
+      'the two to four modular primitives remain identifiable throughout the system',
+      'when used for a wordmark, every character of the exact full brand name is correct and readable'
     ],
     sourceRefs: ['pentagram-univers', 'pentagram-dataland']
   },
@@ -117,7 +119,7 @@ const grammarEvidence = {
   },
   'custom-wordmark': {
     promptFragments: [
-      'spell the full brand name exactly',
+      'spell every character of the exact full brand name',
       'customize only one or two repeated letter features'
     ],
     reviewRules: [
@@ -129,11 +131,13 @@ const grammarEvidence = {
   'symbol-as-system': {
     promptFragments: [
       'define one simple geometric rule that makes a standalone mark',
-      'let the same rule support later patterns without adding logo detail'
+      'let the same rule support later patterns without adding logo detail',
+      'when used for a wordmark, apply the same geometry rule to every character of the exact full brand name'
     ],
     reviewRules: [
       'the core mark works without its applications',
-      'the extension rule stays visibly related to the mark'
+      'the extension rule stays visibly related to the mark',
+      'when used for a wordmark, every character of the exact full brand name is correct and readable'
     ],
     sourceRefs: ['pentagram-mon-takanawa', 'koto-deezer']
   },
@@ -164,10 +168,23 @@ const grammarEvidence = {
 function defineLogoGrammarCard(
   definition: Omit<LogoGrammarCard, keyof GrammarEvidence>
 ): LogoGrammarCard {
-  return {
+  const evidence = grammarEvidence[definition.id]
+
+  return Object.freeze({
     ...definition,
-    ...grammarEvidence[definition.id]
-  }
+    fitSignals: freezeArray(definition.fitSignals),
+    conflictSignals: freezeArray(definition.conflictSignals),
+    allowedLogoTypes: freezeArray(definition.allowedLogoTypes),
+    constructionRules: freezeArray(definition.constructionRules),
+    antiPatterns: freezeArray(definition.antiPatterns),
+    promptFragments: freezeArray(evidence.promptFragments),
+    reviewRules: freezeArray(evidence.reviewRules),
+    sourceRefs: freezeArray(evidence.sourceRefs)
+  })
+}
+
+function freezeArray<T>(values: readonly T[]): readonly T[] {
+  return Object.freeze([...values])
 }
 
 export const logoGrammarCards: readonly LogoGrammarCard[] = Object.freeze([
@@ -231,41 +248,44 @@ export const logoGrammarCards: readonly LogoGrammarCard[] = Object.freeze([
     mechanism: 'one broad continuous path forms the mark',
     fitSignals: [
       '品牌事实涉及旅程、连接、流动或连续性',
-      '完整品牌名较短，可由一条连续粗笔画准确拼写',
-      '字母连写后仍能保持完整名称即时可读',
-      '需要受控而有动势的符号或完整字标',
+      '需要受控而有动势的符号',
       '主要触点要求小尺寸轮廓清晰'
     ],
     conflictSignals: [
       '核心叙事依赖多个分支或节点',
       '品牌气质要求完全静止和纪念碑感',
-      '品牌名称过长，无法在三次以内转折中保持准确拼写',
-      '连续处理会省略字符、改用缩写或退化成独立图标'
+      '路径必须频繁转折才能表达含义'
     ],
-    allowedLogoTypes: ['symbol-mark', 'wordmark', 'combination-mark', 'lettermark'],
+    allowedLogoTypes: ['symbol-mark', 'combination-mark', 'lettermark'],
     constructionRules: ['路径粗', '转折不超过三次', '避免自交'],
     antiPatterns: ['细线迷宫', '复杂结', '普通速度线']
   }),
   defineLogoGrammarCard({
     id: 'modular-grid',
     nameZh: '模块网格',
-    mechanism: '2-4 repeated modules form a compact system',
+    mechanism:
+      'two to four modular primitives repeat across a compact symbol or every glyph of a complete wordmark',
     fitSignals: [
       '品牌由少量可重复的产品、能力或单元构成',
-      '完整品牌名较短，可由二至四种重复模块构建一致字形',
+      '二至四种模块原语可在完整品牌名的所有字形中重复',
       '模块化处理后仍能保持准确拼写和即时可读',
       '秩序、结构或组合能力是差异点',
       '视觉身份需要自然延展到版式和图案'
     ],
     conflictSignals: [
       '品牌核心依赖自由有机或角色化轮廓',
-      '概念需要五个以上模块才能成立',
+      '概念需要五种以上模块原语才能成立',
       '名称过长，有限模块会损害准确拼写或可读性',
       '模块方案会把完整名称压缩为首字母或独立图标',
       '行业语境容易把网格误读为编码或数据矩阵'
     ],
     allowedLogoTypes: ['symbol-mark', 'wordmark', 'combination-mark', 'lettermark', 'emblem'],
-    constructionRules: ['模块数量有限', '网格清楚', '边界紧凑'],
+    constructionRules: [
+      '模块原语种类限于 2-4 种',
+      '网格清楚',
+      '边界紧凑',
+      'when used for a wordmark, construct every character of the exact full brand name from the same two to four modular primitives'
+    ],
     antiPatterns: ['QR 码', '节点网络', '密集小方块']
   }),
   defineLogoGrammarCard({
@@ -373,25 +393,39 @@ export const logoGrammarCards: readonly LogoGrammarCard[] = Object.freeze([
       '名称过长且没有可控的重复字形特征'
     ],
     allowedLogoTypes: ['wordmark'],
-    constructionRules: ['拼写精确', '只改 1-2 个特征', '优先可读'],
+    constructionRules: [
+      '拼写精确',
+      '只改 1-2 个特征',
+      '优先可读',
+      'construct every character of the exact full brand name with only one or two consistently modified features'
+    ],
     antiPatterns: ['每字不同', '伪文字', '装饰字体堆砌']
   }),
   defineLogoGrammarCard({
     id: 'symbol-as-system',
     nameZh: '符号系统',
-    mechanism: 'one geometry rule can extend into layouts or motion',
+    mechanism:
+      'one geometry rule makes a standalone symbol or unifies every glyph of a complete wordmark',
     fitSignals: [
       '品牌需要跨版式、图案和动效保持统一',
       '一个简单几何规则能对应真实品牌行为',
+      '完整品牌名的所有字形可共享一条简单几何规则',
+      '统一规则不会改变任何字符的准确拼写和可读性',
       '独立标志与后续应用同等重要'
     ],
     conflictSignals: [
       '项目只需要一次性标志且没有延展触点',
       '应用规则无法从简单主形中推导',
+      '统一规则会让字符缺失、混淆或退化成图案',
       '核心符号离开图案或动效便无法识别'
     ],
-    allowedLogoTypes: ['symbol-mark', 'combination-mark'],
-    constructionRules: ['标志先独立成立', '规则可重复', '主形简单'],
+    allowedLogoTypes: ['symbol-mark', 'wordmark', 'combination-mark'],
+    constructionRules: [
+      '标志先独立成立',
+      '规则可重复',
+      '主形简单',
+      'when used for a wordmark, preserve every character of the exact full brand name under one geometry rule'
+    ],
     antiPatterns: ['只画应用图案', 'Logo 不完整', '元素无限增殖']
   }),
   defineLogoGrammarCard({

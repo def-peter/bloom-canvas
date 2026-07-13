@@ -2,6 +2,8 @@ import type { LogoGrammarCard, LogoGrammarId } from '../../shared/logoDesign'
 
 export const LOGO_GRAMMAR_LIBRARY_VERSION = 1 as const
 
+type GrammarEvidence = Pick<LogoGrammarCard, 'promptFragments' | 'reviewRules' | 'sourceRefs'>
+
 const grammarEvidence = {
   'negative-space-fusion': {
     promptFragments: [
@@ -157,13 +159,19 @@ const grammarEvidence = {
     ],
     sourceRefs: ['pentagram-mozilla-foundation', 'koto-coda']
   }
-} satisfies Record<
-  LogoGrammarId,
-  Pick<LogoGrammarCard, 'promptFragments' | 'reviewRules' | 'sourceRefs'>
->
+} satisfies Record<LogoGrammarId, GrammarEvidence>
 
-export const logoGrammarCards: LogoGrammarCard[] = [
-  {
+function defineLogoGrammarCard(
+  definition: Omit<LogoGrammarCard, keyof GrammarEvidence>
+): LogoGrammarCard {
+  return {
+    ...definition,
+    ...grammarEvidence[definition.id]
+  }
+}
+
+export const logoGrammarCards: readonly LogoGrammarCard[] = Object.freeze([
+  defineLogoGrammarCard({
     id: 'negative-space-fusion',
     nameZh: '负形融合',
     mechanism: 'two bold forms reveal one meaningful negative shape',
@@ -179,10 +187,9 @@ export const logoGrammarCards: LogoGrammarCard[] = [
     ],
     allowedLogoTypes: ['symbol-mark', 'combination-mark', 'lettermark'],
     constructionRules: ['最多两个前景实体', '32px 负形仍可见', '内部间隙宽'],
-    antiPatterns: ['装饰镂空', '需解释才能看见', '近似现有商标'],
-    ...grammarEvidence['negative-space-fusion']
-  },
-  {
+    antiPatterns: ['装饰镂空', '需解释才能看见', '近似现有商标']
+  }),
+  defineLogoGrammarCard({
     id: 'monogram-synthesis',
     nameZh: '字母合成',
     mechanism: '1-3 specified initials share one silhouette',
@@ -196,12 +203,11 @@ export const logoGrammarCards: LogoGrammarCard[] = [
       '指定字母过多或无法共享清晰骨架',
       '跨语言缩写或品牌首字母尚未确定'
     ],
-    allowedLogoTypes: ['lettermark', 'combination-mark', 'emblem'],
+    allowedLogoTypes: ['lettermark', 'emblem'],
     constructionRules: ['字母共享骨架', '只保留一个轮廓', '黑白可读'],
-    antiPatterns: ['字母堆叠', '额外字符', '细碎切口'],
-    ...grammarEvidence['monogram-synthesis']
-  },
-  {
+    antiPatterns: ['字母堆叠', '额外字符', '细碎切口']
+  }),
+  defineLogoGrammarCard({
     id: 'semantic-hybrid',
     nameZh: '语义融合',
     mechanism: 'two brand truths become one inseparable symbol',
@@ -217,48 +223,52 @@ export const logoGrammarCards: LogoGrammarCard[] = [
     ],
     allowedLogoTypes: ['symbol-mark', 'combination-mark', 'emblem'],
     constructionRules: ['两个事实必须融合', '主次明确', '最多两个元素'],
-    antiPatterns: ['并排图标', '机械拼贴', '行业图标合集'],
-    ...grammarEvidence['semantic-hybrid']
-  },
-  {
+    antiPatterns: ['并排图标', '机械拼贴', '行业图标合集']
+  }),
+  defineLogoGrammarCard({
     id: 'continuous-path',
     nameZh: '连续路径',
     mechanism: 'one broad continuous path forms the mark',
     fitSignals: [
       '品牌事实涉及旅程、连接、流动或连续性',
-      '需要受控而有动势的符号',
+      '完整品牌名较短，可由一条连续粗笔画准确拼写',
+      '字母连写后仍能保持完整名称即时可读',
+      '需要受控而有动势的符号或完整字标',
       '主要触点要求小尺寸轮廓清晰'
     ],
     conflictSignals: [
       '核心叙事依赖多个分支或节点',
       '品牌气质要求完全静止和纪念碑感',
-      '路径必须频繁转折才能表达含义'
+      '品牌名称过长，无法在三次以内转折中保持准确拼写',
+      '连续处理会省略字符、改用缩写或退化成独立图标'
     ],
-    allowedLogoTypes: ['symbol-mark', 'combination-mark', 'lettermark'],
+    allowedLogoTypes: ['symbol-mark', 'wordmark', 'combination-mark', 'lettermark'],
     constructionRules: ['路径粗', '转折不超过三次', '避免自交'],
-    antiPatterns: ['细线迷宫', '复杂结', '普通速度线'],
-    ...grammarEvidence['continuous-path']
-  },
-  {
+    antiPatterns: ['细线迷宫', '复杂结', '普通速度线']
+  }),
+  defineLogoGrammarCard({
     id: 'modular-grid',
     nameZh: '模块网格',
     mechanism: '2-4 repeated modules form a compact system',
     fitSignals: [
       '品牌由少量可重复的产品、能力或单元构成',
+      '完整品牌名较短，可由二至四种重复模块构建一致字形',
+      '模块化处理后仍能保持准确拼写和即时可读',
       '秩序、结构或组合能力是差异点',
       '视觉身份需要自然延展到版式和图案'
     ],
     conflictSignals: [
       '品牌核心依赖自由有机或角色化轮廓',
       '概念需要五个以上模块才能成立',
+      '名称过长，有限模块会损害准确拼写或可读性',
+      '模块方案会把完整名称压缩为首字母或独立图标',
       '行业语境容易把网格误读为编码或数据矩阵'
     ],
-    allowedLogoTypes: ['symbol-mark', 'combination-mark', 'lettermark', 'emblem'],
+    allowedLogoTypes: ['symbol-mark', 'wordmark', 'combination-mark', 'lettermark', 'emblem'],
     constructionRules: ['模块数量有限', '网格清楚', '边界紧凑'],
-    antiPatterns: ['QR 码', '节点网络', '密集小方块'],
-    ...grammarEvidence['modular-grid']
-  },
-  {
+    antiPatterns: ['QR 码', '节点网络', '密集小方块']
+  }),
+  defineLogoGrammarCard({
     id: 'interlocking-units',
     nameZh: '互锁单元',
     mechanism: '2-4 solid units interlock as one whole',
@@ -274,10 +284,9 @@ export const logoGrammarCards: LogoGrammarCard[] = [
     ],
     allowedLogoTypes: ['symbol-mark', 'combination-mark', 'lettermark'],
     constructionRules: ['单元少', '接缝宽', '整体先于局部'],
-    antiPatterns: ['拼图模板', '花瓣旋转', '无意义交叠'],
-    ...grammarEvidence['interlocking-units']
-  },
-  {
+    antiPatterns: ['拼图模板', '花瓣旋转', '无意义交叠']
+  }),
+  defineLogoGrammarCard({
     id: 'frame-threshold',
     nameZh: '开放框域',
     mechanism: 'an open frame defines focus or entry',
@@ -293,10 +302,9 @@ export const logoGrammarCards: LogoGrammarCard[] = [
     ],
     allowedLogoTypes: ['symbol-mark', 'combination-mark', 'emblem'],
     constructionRules: ['至少一侧开放', '内外空间都参与', '轮廓稳定'],
-    antiPatterns: ['普通 App 圆角框', '封闭相框', '门窗直译'],
-    ...grammarEvidence['frame-threshold']
-  },
-  {
+    antiPatterns: ['普通 App 圆角框', '封闭相框', '门窗直译']
+  }),
+  defineLogoGrammarCard({
     id: 'fold-unfold',
     nameZh: '折叠展开',
     mechanism: 'one plane changes from closed to open',
@@ -312,10 +320,9 @@ export const logoGrammarCards: LogoGrammarCard[] = [
     ],
     allowedLogoTypes: ['symbol-mark', 'combination-mark'],
     constructionRules: ['只保留一个折叠动作', '平面母版成立', '少量面'],
-    antiPatterns: ['依赖 3D 光影', '纸飞机俗套', '多层折纸'],
-    ...grammarEvidence['fold-unfold']
-  },
-  {
+    antiPatterns: ['依赖 3D 光影', '纸飞机俗套', '多层折纸']
+  }),
+  defineLogoGrammarCard({
     id: 'radial-core',
     nameZh: '径向核心',
     mechanism: 'few units organize around a stable center',
@@ -331,10 +338,9 @@ export const logoGrammarCards: LogoGrammarCard[] = [
     ],
     allowedLogoTypes: ['symbol-mark', 'combination-mark', 'emblem'],
     constructionRules: ['3-5 个单元', '中心明确', '黑白轮廓成立'],
-    antiPatterns: ['花朵', '太阳', '旋叶', '过多射线'],
-    ...grammarEvidence['radial-core']
-  },
-  {
+    antiPatterns: ['花朵', '太阳', '旋叶', '过多射线']
+  }),
+  defineLogoGrammarCard({
     id: 'signal-rhythm',
     nameZh: '信号节奏',
     mechanism: 'bars, pulses or intervals form one rhythm',
@@ -350,10 +356,9 @@ export const logoGrammarCards: LogoGrammarCard[] = [
     ],
     allowedLogoTypes: ['symbol-mark', 'combination-mark'],
     constructionRules: ['节拍少', '间距有意', '整体轮廓封闭或稳定'],
-    antiPatterns: ['均衡器模板', '柱状图', '速度线'],
-    ...grammarEvidence['signal-rhythm']
-  },
-  {
+    antiPatterns: ['均衡器模板', '柱状图', '速度线']
+  }),
+  defineLogoGrammarCard({
     id: 'custom-wordmark',
     nameZh: '定制字标',
     mechanism: 'one or two controlled features customize the full name',
@@ -367,12 +372,11 @@ export const logoGrammarCards: LogoGrammarCard[] = [
       '主要触点只能容纳无文字小图标',
       '名称过长且没有可控的重复字形特征'
     ],
-    allowedLogoTypes: ['wordmark', 'combination-mark'],
+    allowedLogoTypes: ['wordmark'],
     constructionRules: ['拼写精确', '只改 1-2 个特征', '优先可读'],
-    antiPatterns: ['每字不同', '伪文字', '装饰字体堆砌'],
-    ...grammarEvidence['custom-wordmark']
-  },
-  {
+    antiPatterns: ['每字不同', '伪文字', '装饰字体堆砌']
+  }),
+  defineLogoGrammarCard({
     id: 'symbol-as-system',
     nameZh: '符号系统',
     mechanism: 'one geometry rule can extend into layouts or motion',
@@ -388,10 +392,9 @@ export const logoGrammarCards: LogoGrammarCard[] = [
     ],
     allowedLogoTypes: ['symbol-mark', 'combination-mark'],
     constructionRules: ['标志先独立成立', '规则可重复', '主形简单'],
-    antiPatterns: ['只画应用图案', 'Logo 不完整', '元素无限增殖'],
-    ...grammarEvidence['symbol-as-system']
-  },
-  {
+    antiPatterns: ['只画应用图案', 'Logo 不完整', '元素无限增殖']
+  }),
+  defineLogoGrammarCard({
     id: 'simplified-character',
     nameZh: '简化角色',
     mechanism: 'a real character source becomes one strong silhouette',
@@ -407,10 +410,9 @@ export const logoGrammarCards: LogoGrammarCard[] = [
     ],
     allowedLogoTypes: ['symbol-mark', 'combination-mark', 'emblem'],
     constructionRules: ['五官最多一个提示', '轮廓优先', '姿态单一'],
-    antiPatterns: ['吉祥物插画', '写实细节', '多表情合集'],
-    ...grammarEvidence['simplified-character']
-  },
-  {
+    antiPatterns: ['吉祥物插画', '写实细节', '多表情合集']
+  }),
+  defineLogoGrammarCard({
     id: 'dynamic-aperture',
     nameZh: '动态开口',
     mechanism: 'one stable form opens, closes or scales',
@@ -426,7 +428,6 @@ export const logoGrammarCards: LogoGrammarCard[] = [
     ],
     allowedLogoTypes: ['symbol-mark', 'combination-mark'],
     constructionRules: ['静态关键帧成立', '运动轴单一', '边界清晰'],
-    antiPatterns: ['随机变形', '仅靠动画可读', '发光 AI 火花'],
-    ...grammarEvidence['dynamic-aperture']
-  }
-] satisfies LogoGrammarCard[]
+    antiPatterns: ['随机变形', '仅靠动画可读', '发光 AI 火花']
+  })
+] satisfies LogoGrammarCard[])

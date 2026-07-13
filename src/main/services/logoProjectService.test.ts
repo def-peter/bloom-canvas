@@ -3,11 +3,15 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { logoTestPromptPack, logoTestRevision } from '../../shared/logoDesign.testFixtures'
+import { saveLogoProjectSchema } from '../../shared/schemas'
+import type { LogoProject, SaveLogoProjectInput } from '../../shared/types'
 import type { AppPaths } from './appPaths'
 import { LogoProjectService } from './logoProjectService'
-import { StorageService } from './storageService'
+import { defaultSettings, StorageService } from './storageService'
 
 let rootDir: string
+let paths: AppPaths
+let storage: StorageService
 let service: LogoProjectService
 
 function pathsFor(dir: string): AppPaths {
@@ -21,9 +25,78 @@ function pathsFor(dir: string): AppPaths {
   }
 }
 
+function legacyProject(overrides: Partial<LogoProject> = {}): LogoProject {
+  return {
+    id: 'project-1',
+    brandName: '生花',
+    industry: 'AI 绘图软件',
+    businessDescription: '帮助创作者生成图片',
+    brandKeywords: ['清晰'],
+    avoidElements: '复杂花瓣, 叶片，AI sparkle、robot head\n齿轮',
+    preferredColors: [],
+    avoidedColors: [],
+    logoTypes: ['combination-mark'],
+    styleDirections: ['modern-minimal'],
+    usageScenarios: [],
+    referenceImageIds: [],
+    promptPack: {
+      basePrompt: 'legacy base prompt',
+      directions: [
+        {
+          id: 'modern-minimal',
+          name: '现代极简',
+          prompt: 'legacy direction prompt',
+          finalPrompt: 'legacy final prompt'
+        }
+      ]
+    },
+    generationIds: [],
+    favoriteVariantIds: [],
+    createdAt: '2026-07-09T00:00:00.000Z',
+    updatedAt: '2026-07-09T00:00:00.000Z',
+    ...overrides
+  }
+}
+
+async function seedProject(project: LogoProject): Promise<void> {
+  await storage.write({
+    providers: [],
+    settings: defaultSettings,
+    assets: [],
+    generations: [],
+    variants: [],
+    logoProjects: [project]
+  })
+}
+
+function parseProjectUpdate(
+  project: LogoProject,
+  overrides: Record<string, unknown> = {}
+): SaveLogoProjectInput {
+  return saveLogoProjectSchema.parse({
+    id: project.id,
+    brandName: project.brandName,
+    industry: project.industry,
+    businessDescription: project.businessDescription,
+    brandKeywords: project.brandKeywords,
+    logoTypes: project.logoTypes,
+    referenceImageIds: project.referenceImageIds,
+    ...overrides
+  })
+}
+
+async function readPersistedProject(projectId: string): Promise<LogoProject> {
+  const state = await new StorageService(paths).read()
+  const project = state.logoProjects.find((item) => item.id === projectId)
+  if (!project) throw new Error('Persisted logo project not found')
+  return project
+}
+
 beforeEach(async () => {
   rootDir = await mkdtemp(join(tmpdir(), 'bloom-logo-project-'))
-  service = new LogoProjectService(new StorageService(pathsFor(rootDir)))
+  paths = pathsFor(rootDir)
+  storage = new StorageService(paths)
+  service = new LogoProjectService(storage)
 })
 
 afterEach(async () => {
@@ -31,34 +104,92 @@ afterEach(async () => {
 })
 
 describe('LogoProjectService', () => {
-  test('saves a V2 project without legacy style directions and migrates avoided elements', async () => {
-    const project = await service.save({
+  test('migrates a legacy metadata project through a parsed V2 save', async () => {
+    const existing = legacyProject()
+    await seedProject(existing)
+
+    const input = parseProjectUpdate(existing, {
       briefVersion: 1,
       briefFingerprint: 'brief-fingerprint',
       promptVersion: 1,
       promptFingerprint: 'prompt-fingerprint',
-      brandName: '生花',
-      industry: 'AI 绘图软件',
-      businessDescription: '帮助创作者生成图片',
-      brandKeywords: ['清晰'],
-      avoidElements: '复杂花瓣, 叶片，AI sparkle、robot head\n齿轮',
-      logoTypes: ['combination-mark'],
-      referenceImageIds: [],
       designRevision: logoTestRevision,
       strategyPromptPack: logoTestPromptPack
     })
 
-    expect(project.styleDirections).toEqual([])
-    expect(project.promptPack).toBeUndefined()
-    expect(project.avoidedElements).toEqual([
+    await service.save(input)
+
+    const persisted = await readPersistedProject(existing.id)
+    expect(persisted.styleDirections).toEqual(existing.styleDirections)
+    expect(persisted.promptPack).toEqual(existing.promptPack)
+    expect(persisted.avoidElements).toBe(existing.avoidElements)
+    expect(persisted.avoidedElements).toEqual([
       '复杂花瓣',
       '叶片',
       'AI sparkle',
       'robot head',
       '齿轮'
     ])
-    expect(project.designRevision).toBe(logoTestRevision)
-    expect(project.strategyPromptPack).toBe(logoTestPromptPack)
+    expect(persisted.designRevision).toEqual(logoTestRevision)
+    expect(persisted.strategyPromptPack).toEqual(logoTestPromptPack)
+  })
+
+  test('clears legacy directions and prompt pack only when an update explicitly requests it', async () => {
+    const existing = legacyProject()
+    await seedProject(existing)
+
+    const input = parseProjectUpdate(existing, { styleDirections: [] })
+    await service.save(input)
+
+    const persisted = await readPersistedProject(existing.id)
+    expect(persisted.styleDirections).toEqual([])
+    expect(persisted.promptPack).toBeUndefined()
+  })
+
+  test('defaults omitted legacy directions for a new parsed project', async () => {
+    const input = parseProjectUpdate(legacyProject({ id: 'new-project' }))
+    const created = await service.save({ ...input, id: undefined })
+
+    const persisted = await readPersistedProject(created.id)
+    expect(persisted.styleDirections).toEqual([])
+    expect(persisted.promptPack).toBeUndefined()
+  })
+
+  test('remigrates avoided elements when the old UI changes the legacy field', async () => {
+    const existing = legacyProject({
+      briefVersion: 1,
+      avoidElements: '旧值',
+      avoidedElements: ['旧值']
+    })
+    await seedProject(existing)
+
+    const input = parseProjectUpdate(existing, {
+      avoidElements: '新花瓣，旧叶片、AI sparkle'
+    })
+    await service.save(input)
+
+    const persisted = await readPersistedProject(existing.id)
+    expect(persisted.avoidElements).toBe('新花瓣，旧叶片、AI sparkle')
+    expect(persisted.avoidedElements).toEqual(['新花瓣', '旧叶片', 'AI sparkle'])
+  })
+
+  test.each([
+    ['a 121-character item', 'x'.repeat(121)],
+    ['13 items', Array.from({ length: 13 }, (_, index) => `item-${index + 1}`).join(',')]
+  ])('rejects migration with %s and preserves persisted data', async (_case, avoidElements) => {
+    const existing = legacyProject({
+      briefVersion: 1,
+      avoidElements: '保留旧值',
+      avoidedElements: ['保留旧值']
+    })
+    await seedProject(existing)
+
+    const input = parseProjectUpdate(existing, { avoidElements })
+    await expect(service.save(input)).rejects.toThrow(/validation/i)
+
+    const persisted = await readPersistedProject(existing.id)
+    expect(persisted.avoidElements).toBe('保留旧值')
+    expect(persisted.avoidedElements).toEqual(['保留旧值'])
   })
 
   test('creates a logo project with defaults and a prompt pack', async () => {

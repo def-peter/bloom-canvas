@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { logoTestPromptPack } from './logoDesign.testFixtures'
+import type { LogoStrategyPromptPack } from './logoDesign'
 import {
   buildLogoPromptPackSchema,
   createGenerationSchema,
@@ -55,10 +56,18 @@ describe('logo schemas', () => {
     expect(revision.strategies).toHaveLength(3)
   })
 
-  test('rejects a prompt pack whose source versions are missing', () => {
+  test('rejects a prompt pack whose source prompt version is missing', () => {
+    const promptPack: Partial<LogoStrategyPromptPack> = { ...logoTestPromptPack }
+    delete promptPack.sourcePromptVersion
+
+    expect(() => logoStrategyPromptPackSchema.parse(promptPack)).toThrow()
+  })
+
+  test.each([0, 1.5])('rejects prompt pack source prompt version %s', (sourcePromptVersion) => {
     expect(() =>
       logoStrategyPromptPackSchema.parse({
-        directions: [{ strategyId: 'strategy-path', finalPrompt: 'one logo' }]
+        ...logoTestPromptPack,
+        sourcePromptVersion
       })
     ).toThrow()
   })
@@ -73,6 +82,20 @@ describe('logo schemas', () => {
       })
     ).toThrow()
   })
+
+  test.each([0, 1.5])(
+    'rejects prompt direction source prompt version %s',
+    (sourcePromptVersion) => {
+      expect(() =>
+        logoStrategyPromptPackSchema.parse({
+          ...logoTestPromptPack,
+          directions: logoTestPromptPack.directions.map((direction, index) =>
+            index === 0 ? { ...direction, sourcePromptVersion } : direction
+          )
+        })
+      ).toThrow()
+    }
+  )
 
   test('accepts a minimal logo project brief', () => {
     const result = saveLogoProjectSchema.parse({
@@ -90,7 +113,7 @@ describe('logo schemas', () => {
     expect(buildLogoPromptPackSchema.parse(result).brandName).toBe('生花')
   })
 
-  test('defaults legacy style directions only when saving a project', () => {
+  test('preserves whether legacy style directions were omitted or explicitly cleared', () => {
     const input = {
       brandName: '生花',
       industry: 'AI 绘图软件',
@@ -100,7 +123,10 @@ describe('logo schemas', () => {
       referenceImageIds: []
     }
 
-    expect(saveLogoProjectSchema.parse(input).styleDirections).toEqual([])
+    expect(saveLogoProjectSchema.parse(input).styleDirections).toBeUndefined()
+    expect(saveLogoProjectSchema.parse({ ...input, styleDirections: [] }).styleDirections).toEqual(
+      []
+    )
     expect(() => buildLogoPromptPackSchema.parse(input)).toThrow()
   })
 

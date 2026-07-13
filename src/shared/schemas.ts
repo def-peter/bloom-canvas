@@ -64,6 +64,8 @@ export const logoUsageScenarioSchema = z.enum([
   'social-avatar'
 ])
 
+export const avoidedElementsSchema = z.array(z.string().trim().min(1).max(120)).max(12)
+
 const logoSemanticListSchema = z.array(z.string().trim().min(1).max(240)).max(12)
 
 export const logoBrandBriefV2Schema = z.object({
@@ -75,7 +77,7 @@ export const logoBrandBriefV2Schema = z.object({
   targetAudience: z.string().trim().max(400).optional(),
   brandKeywords: z.array(z.string().trim().min(1).max(40)).min(1).max(6),
   differentiator: z.string().trim().max(600).optional(),
-  avoidedElements: z.array(z.string().trim().min(1).max(120)).max(12),
+  avoidedElements: avoidedElementsSchema,
   preferredColors: z.array(z.string().trim().min(1).max(40)).max(8),
   avoidedColors: z.array(z.string().trim().min(1).max(40)).max(8),
   logoType: logoTypeSchema,
@@ -199,11 +201,11 @@ export const saveLogoProjectSchema = z.object({
   brandKeywords: z.array(z.string().trim().min(1).max(40)).min(1).max(6),
   differentiator: z.string().trim().max(600).optional(),
   avoidElements: z.string().trim().max(600).optional(),
-  avoidedElements: z.array(z.string().trim().min(1).max(120)).max(12).optional(),
+  avoidedElements: avoidedElementsSchema.optional(),
   preferredColors: z.array(z.string().trim().min(1).max(40)).max(8).default([]),
   avoidedColors: z.array(z.string().trim().min(1).max(40)).max(8).default([]),
   logoTypes: z.array(logoTypeSchema).min(1).max(1),
-  styleDirections: z.array(logoStyleDirectionSchema).max(3).default([]),
+  styleDirections: z.array(logoStyleDirectionSchema).max(3).optional(),
   usageScenarios: z.array(logoUsageScenarioSchema).max(6).default([]),
   referenceImageIds: z.array(z.string().min(1)).max(8),
   referenceNote: z.string().trim().max(600).optional(),

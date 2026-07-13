@@ -6,6 +6,7 @@ import type {
   LogoPromptPack,
   SaveLogoProjectInput
 } from '../../shared/types'
+import { avoidedElementsSchema } from '../../shared/schemas'
 import { buildLogoPromptPack } from './logoPromptCompiler'
 import type { StorageService } from './storageService'
 
@@ -22,10 +23,32 @@ function promptPackMatchesDirections(
 }
 
 function migrateAvoidedElements(avoidElements: string | undefined): string[] {
-  return (avoidElements ?? '')
+  const migrated = (avoidElements ?? '')
     .split(/[,，、\n]+/)
     .map((item) => item.trim())
     .filter(Boolean)
+  const result = avoidedElementsSchema.safeParse(migrated)
+  if (!result.success) {
+    throw new Error(`Logo avoided elements validation failed: ${result.error.message}`)
+  }
+  return result.data
+}
+
+function resolveAvoidedElements(
+  input: SaveLogoProjectInput,
+  existing: LogoProject | undefined,
+  briefVersion: number | undefined
+): string[] | undefined {
+  if (input.avoidedElements !== undefined) return input.avoidedElements
+
+  const usesV2AvoidedElements =
+    briefVersion !== undefined || existing?.avoidedElements !== undefined
+  if (input.avoidElements !== undefined) {
+    return usesV2AvoidedElements ? migrateAvoidedElements(input.avoidElements) : undefined
+  }
+
+  if (existing?.avoidedElements !== undefined) return existing.avoidedElements
+  return briefVersion === undefined ? undefined : migrateAvoidedElements(existing?.avoidElements)
 }
 
 export class LogoProjectService {
@@ -50,18 +73,15 @@ export class LogoProjectService {
       ? state.logoProjects.find((project) => project.id === input.id)
       : undefined
     const styleDirections = input.styleDirections ?? existing?.styleDirections ?? []
-    const promptPack = promptPackMatchesDirections(input.promptPack, styleDirections)
-      ? input.promptPack
+    const promptPackCandidate =
+      input.promptPack ?? (input.styleDirections === undefined ? existing?.promptPack : undefined)
+    const promptPack = promptPackMatchesDirections(promptPackCandidate, styleDirections)
+      ? promptPackCandidate
       : styleDirections.length > 0
         ? buildLogoPromptPack({ ...input, styleDirections })
         : undefined
     const briefVersion = input.briefVersion ?? existing?.briefVersion
-    const avoidedElements =
-      input.avoidedElements ??
-      existing?.avoidedElements ??
-      (briefVersion === undefined
-        ? undefined
-        : migrateAvoidedElements(input.avoidElements ?? existing?.avoidElements))
+    const avoidedElements = resolveAvoidedElements(input, existing, briefVersion)
     const nextProject: LogoProject = {
       id: existing?.id ?? input.id ?? nanoid(),
       briefVersion,
@@ -77,7 +97,7 @@ export class LogoProjectService {
       targetAudience: input.targetAudience,
       brandKeywords: input.brandKeywords,
       differentiator: input.differentiator,
-      avoidElements: input.avoidElements,
+      avoidElements: input.avoidElements ?? existing?.avoidElements,
       avoidedElements,
       preferredColors: input.preferredColors ?? [],
       avoidedColors: input.avoidedColors ?? [],

@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'fs/promises'
+import { access, mkdtemp, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import sharp from 'sharp'
@@ -226,5 +226,117 @@ describe('GenerationService', () => {
     expect(imageProvider.requests.at(-1)?.prompt).toBe('final logo prompt')
     expect(retryRecord.scenario).toBe('logo-design')
     expect(retryRecord.scenarioMetadata?.styleDirectionId).toBe('modern-minimal')
+  })
+
+  it('removes a generation, output assets, variants, and logo project references', async () => {
+    const { generations, providerId, storage } = await createGenerationHarness()
+
+    const record = await generations.create({
+      providerId,
+      prompt: 'final logo prompt',
+      useOptimizedPrompt: false,
+      referenceAssetIds: [],
+      parameters: {
+        size: '1024x1024',
+        count: 1,
+        quality: 'standard',
+        outputFormat: 'png'
+      },
+      scenario: 'logo-design',
+      projectId: 'project-1',
+      scenarioMetadata: {
+        logoProjectId: 'project-1',
+        styleDirectionId: 'modern-minimal',
+        styleDirectionName: '现代极简',
+        logoTypes: ['combination-mark'],
+        promptPackSnapshot: {
+          basePrompt: 'base prompt',
+          directions: [
+            {
+              id: 'modern-minimal',
+              name: '现代极简',
+              prompt: 'direction prompt',
+              finalPrompt: 'final logo prompt'
+            }
+          ]
+        },
+        finalPrompt: 'final logo prompt',
+        briefSnapshot: {
+          brandName: '生花',
+          industry: 'AI 绘图软件',
+          businessDescription: '帮助创作者生成图片',
+          brandKeywords: ['清晰']
+        },
+        qualityRulesVersion: 1
+      }
+    })
+    const assetPath = record.variants[0].asset.filePath
+    const thumbnailPath = record.variants[0].asset.thumbnailPath
+    await storage.update((state) => ({
+      ...state,
+      logoProjects: [
+        {
+          id: 'project-1',
+          brandName: '生花',
+          industry: 'AI 绘图软件',
+          businessDescription: '帮助创作者生成图片',
+          brandKeywords: ['清晰'],
+          preferredColors: [],
+          avoidedColors: [],
+          logoTypes: ['combination-mark'],
+          styleDirections: ['modern-minimal'],
+          usageScenarios: [],
+          referenceImageIds: [],
+          generationIds: [record.id],
+          favoriteVariantIds: [record.variants[0].id],
+          createdAt: '2026-07-09T00:00:00.000Z',
+          updatedAt: '2026-07-09T00:00:00.000Z'
+        }
+      ]
+    }))
+
+    await generations.remove(record.id)
+    const state = await storage.read()
+
+    expect(state.generations).toHaveLength(0)
+    expect(state.variants).toHaveLength(0)
+    expect(state.assets).toHaveLength(0)
+    expect(state.logoProjects[0].generationIds).toEqual([])
+    expect(state.logoProjects[0].favoriteVariantIds).toEqual([])
+    await expect(access(assetPath)).rejects.toThrow()
+    await expect(access(thumbnailPath)).rejects.toThrow()
+  })
+
+  it('keeps reference assets when removing an image-to-image generation', async () => {
+    const { assets, generations, providerId, storage } = await createGenerationHarness()
+    const sourceImage = join(tempRoot!, 'reference.png')
+    await writeFile(
+      sourceImage,
+      await sharp({ create: { width: 12, height: 12, channels: 3, background: '#ffffff' } })
+        .png()
+        .toBuffer()
+    )
+    const reference = await assets.importReference(sourceImage)
+    const record = await generations.create({
+      providerId,
+      prompt: '保留参考图主体，改成极简图标',
+      useOptimizedPrompt: false,
+      referenceAssetIds: [reference.id],
+      parameters: {
+        size: '1024x1024',
+        count: 1,
+        quality: 'standard',
+        outputFormat: 'png'
+      }
+    })
+    const outputPath = record.variants[0].asset.filePath
+
+    await generations.remove(record.id)
+    const state = await storage.read()
+
+    expect(state.generations).toHaveLength(0)
+    expect(state.assets.map((asset) => asset.id)).toEqual([reference.id])
+    await expect(access(reference.filePath)).resolves.toBeUndefined()
+    await expect(access(outputPath)).rejects.toThrow()
   })
 })

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 import type { GenerationRecord, LogoStyleDirectionId } from '../../../../shared/types'
 import { LogoResultsPanel } from './LogoResultsPanel'
@@ -70,6 +70,7 @@ describe('LogoResultsPanel', () => {
         ]}
         selectedProjectId="project-1"
         onContinueEdit={vi.fn()}
+        onDelete={vi.fn()}
         onExport={vi.fn()}
         onRetry={vi.fn()}
       />
@@ -106,6 +107,7 @@ describe('LogoResultsPanel', () => {
         ]}
         selectedProjectId="project-1"
         onContinueEdit={vi.fn()}
+        onDelete={vi.fn()}
         onExport={vi.fn()}
         onRetry={retry}
       />
@@ -118,5 +120,40 @@ describe('LogoResultsPanel', () => {
 
     resolveRetry?.()
     await waitFor(() => expect(screen.getByRole('button', { name: '重新生成' })).not.toBeDisabled())
+  })
+
+  test('confirms before deleting a logo generation', async () => {
+    const onDelete = vi.fn().mockResolvedValue(undefined)
+
+    render(
+      <LogoResultsPanel
+        generating={false}
+        generations={[
+          logoRecord('modern-minimal', '现代极简', [
+            {
+              id: 'variant-1',
+              generationId: 'generation-modern-minimal',
+              assetId: logoAsset.id,
+              index: 0,
+              favorite: false,
+              createdAt: '2026-07-09T00:00:00.000Z',
+              asset: logoAsset
+            }
+          ])
+        ]}
+        selectedProjectId="project-1"
+        onContinueEdit={vi.fn()}
+        onDelete={onDelete}
+        onExport={vi.fn()}
+        onRetry={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /删\s*除/ }))
+    const deleteDialog = await screen.findByRole('dialog', { name: '删除这次 Logo 生成？' })
+
+    fireEvent.click(within(deleteDialog).getByRole('button', { name: /删\s*除/ }))
+
+    await waitFor(() => expect(onDelete).toHaveBeenCalledWith('generation-modern-minimal'))
   })
 })

@@ -1,4 +1,5 @@
-import { Button, Collapse, Empty, Image, Spin, Typography } from 'antd'
+import { DeleteOutlined } from '@ant-design/icons'
+import { Button, Collapse, Empty, Image, Modal, Spin, Typography } from 'antd'
 import { useState } from 'react'
 import { assetProtocolUrl } from '../../../../shared/assetProtocol'
 import type { Asset, GenerationRecord } from '../../../../shared/types'
@@ -9,6 +10,7 @@ interface LogoResultsPanelProps {
   generations: GenerationRecord[]
   selectedProjectId: string | null
   onContinueEdit: (asset: Asset) => void
+  onDelete: (generationId: string) => Promise<void>
   onExport: (assetId: string) => Promise<void>
   onRetry: (generationId: string) => Promise<void>
 }
@@ -26,10 +28,13 @@ export function LogoResultsPanel({
   generations,
   selectedProjectId,
   onContinueEdit,
+  onDelete,
   onExport,
   onRetry
 }: LogoResultsPanelProps): React.JSX.Element {
   const [retryingGenerationId, setRetryingGenerationId] = useState<string | null>(null)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   async function retryGeneration(generationId: string): Promise<void> {
     setRetryingGenerationId(generationId)
@@ -39,6 +44,18 @@ export function LogoResultsPanel({
       // AppShell owns error reporting; keep this component focused on interaction state.
     } finally {
       setRetryingGenerationId(null)
+    }
+  }
+
+  async function deleteGeneration(): Promise<void> {
+    if (!deleteTargetId) return
+
+    setDeleting(true)
+    try {
+      await onDelete(deleteTargetId)
+      setDeleteTargetId(null)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -91,6 +108,14 @@ export function LogoResultsPanel({
                           导出
                         </Button>
                         <Button
+                          danger
+                          icon={<DeleteOutlined />}
+                          size="small"
+                          onClick={() => setDeleteTargetId(generation.id)}
+                        >
+                          删除
+                        </Button>
+                        <Button
                           aria-label={
                             retryingGenerationId === generation.id ? '重新生成中' : '重新生成'
                           }
@@ -121,6 +146,20 @@ export function LogoResultsPanel({
           ))}
         </div>
       )}
+      <Modal
+        cancelText="取消"
+        confirmLoading={deleting}
+        okButtonProps={{ danger: true }}
+        okText="删除"
+        open={Boolean(deleteTargetId)}
+        title="删除这次 Logo 生成？"
+        onCancel={() => setDeleteTargetId(null)}
+        onOk={deleteGeneration}
+      >
+        <Typography.Paragraph>
+          删除后会移除这次生成的 Logo 图片和项目记录。用户添加的参考图不会被删除。
+        </Typography.Paragraph>
+      </Modal>
     </main>
   )
 }

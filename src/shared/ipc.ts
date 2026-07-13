@@ -27,6 +27,7 @@ export const IPC_CHANNELS = {
   generationCreate: 'generation:create',
   generationList: 'generation:list',
   generationFavorite: 'generation:favorite',
+  generationRemove: 'generation:remove',
   generationRetry: 'generation:retry',
   promptOptimize: 'prompt:optimize',
   logoProjectList: 'logoProject:list',
@@ -54,6 +55,7 @@ export interface BloomCanvasApi {
     create: (input: CreateGenerationInput) => Promise<AppResult<GenerationRecord>>
     list: () => Promise<AppResult<GenerationRecord[]>>
     favorite: (generationId: string, favorite: boolean) => Promise<AppResult<GenerationRecord>>
+    remove: (generationId: string) => Promise<AppResult<void>>
     retry: (generationId: string) => Promise<AppResult<GenerationRecord>>
   }
   prompt: {

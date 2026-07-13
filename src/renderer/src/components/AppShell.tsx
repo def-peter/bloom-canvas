@@ -93,6 +93,16 @@ function WorkbenchShell(): React.JSX.Element {
     }
   }
 
+  async function handleDeleteGeneration(generationId: string): Promise<void> {
+    try {
+      await bloomCanvasClient.generations.remove(generationId)
+      await refresh()
+      message.success('已删除历史记录')
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : '删除历史记录失败')
+    }
+  }
+
   function handleContinueEdit(asset: Asset): void {
     setDraftReferenceAssets([asset])
     setActiveScene('general')
@@ -155,6 +165,7 @@ function WorkbenchShell(): React.JSX.Element {
           <HistoryPanel
             generations={generations}
             selectedId={selectedGeneration?.id}
+            onDelete={handleDeleteGeneration}
             onSelect={selectGeneration}
           />
           <GalleryPanel
@@ -188,6 +199,7 @@ function WorkbenchShell(): React.JSX.Element {
             generations={generations}
             selectedProjectId={selectedLogoProject?.id ?? null}
             onContinueEdit={handleContinueEdit}
+            onDelete={handleDeleteGeneration}
             onExport={handleExport}
             onRetry={handleRetry}
           />

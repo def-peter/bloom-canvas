@@ -133,6 +133,15 @@ export function registerIpcHandlers(): void {
     }
   })
 
+  ipcMain.handle(IPC_CHANNELS.generationRemove, async (_event, generationId: string) => {
+    try {
+      await generations.remove(generationId)
+      return ok(undefined)
+    } catch (error) {
+      return err(toErrorPayload(error))
+    }
+  })
+
   ipcMain.handle(IPC_CHANNELS.promptOptimize, async (_event, input) => {
     try {
       const parsed = promptOptimizeSchema.parse(input)

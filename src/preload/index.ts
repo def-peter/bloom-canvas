@@ -21,6 +21,7 @@ const bloomCanvasApi: BloomCanvasApi = {
     list: () => ipcRenderer.invoke(IPC_CHANNELS.generationList),
     favorite: (generationId, favorite) =>
       ipcRenderer.invoke(IPC_CHANNELS.generationFavorite, generationId, favorite),
+    remove: (generationId) => ipcRenderer.invoke(IPC_CHANNELS.generationRemove, generationId),
     retry: (generationId) => ipcRenderer.invoke(IPC_CHANNELS.generationRetry, generationId)
   },
   prompt: {

@@ -154,6 +154,7 @@ function installBloomCanvasApi(overrides: Partial<BloomCanvasApi> = {}): BloomCa
     generations: {
       create: vi.fn(),
       list: vi.fn().mockResolvedValue({ ok: true, data: [] }),
+      remove: vi.fn(),
       favorite: vi.fn(),
       retry: vi.fn()
     },
@@ -209,6 +210,7 @@ describe('AppShell', () => {
       generations: {
         create,
         list: vi.fn().mockResolvedValue({ ok: true, data: [] }),
+        remove: vi.fn(),
         favorite: vi.fn(),
         retry: vi.fn()
       }
@@ -239,6 +241,7 @@ describe('AppShell', () => {
       generations: {
         create,
         list: vi.fn().mockResolvedValue({ ok: true, data: [generatedRecordWithVariant] }),
+        remove: vi.fn(),
         favorite: vi.fn(),
         retry: vi.fn()
       }
@@ -274,6 +277,7 @@ describe('AppShell', () => {
       generations: {
         create: vi.fn(),
         list: vi.fn().mockResolvedValue({ ok: true, data: [logoGeneratedRecordWithVariant] }),
+        remove: vi.fn(),
         favorite: vi.fn(),
         retry: vi.fn()
       },
@@ -293,6 +297,43 @@ describe('AppShell', () => {
     expect(screen.getByRole('img', { name: '参考图 1' })).toHaveAttribute(
       'src',
       'bloom-canvas://thumbnail/logo-asset-1'
+    )
+  })
+
+  it('deletes a generation from history after confirmation', async () => {
+    const remove = vi.fn().mockResolvedValue({ ok: true, data: null })
+    const list = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, data: [generatedRecordWithVariant] })
+      .mockResolvedValue({ ok: true, data: [] })
+    installBloomCanvasApi({
+      providers: {
+        list: vi.fn().mockResolvedValue({ ok: true, data: [provider] }),
+        save: vi.fn(),
+        getActive: vi.fn().mockResolvedValue({ ok: true, data: provider })
+      },
+      generations: {
+        create: vi.fn(),
+        list,
+        remove,
+        favorite: vi.fn(),
+        retry: vi.fn()
+      }
+    })
+
+    render(<AppShell />)
+
+    await waitFor(() =>
+      expect(screen.getAllByText(generatedRecordWithVariant.promptFinal).length).toBeGreaterThan(0)
+    )
+    fireEvent.click(screen.getByRole('button', { name: '删除历史记录' }))
+    const deleteDialog = await screen.findByRole('dialog')
+    expect(within(deleteDialog).getByText('删除这条历史记录？')).toBeInTheDocument()
+    fireEvent.click(within(deleteDialog).getByRole('button', { name: /删\s*除/ }))
+
+    await waitFor(() => expect(remove).toHaveBeenCalledWith(generatedRecordWithVariant.id))
+    await waitFor(() =>
+      expect(screen.queryByText(generatedRecordWithVariant.promptFinal)).toBeNull()
     )
   })
 })

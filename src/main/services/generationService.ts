@@ -1,3 +1,4 @@
+import { rm } from 'fs/promises'
 import { nanoid } from 'nanoid'
 import type {
   Asset,
@@ -169,6 +170,51 @@ export class GenerationService {
       projectId: generation.projectId,
       scenarioMetadata: generation.scenarioMetadata
     })
+  }
+
+  async remove(generationId: string): Promise<void> {
+    const current = await this.storage.read()
+    const generation = current.generations.find((item) => item.id === generationId)
+    if (!generation) {
+      throw new Error('Generation not found')
+    }
+
+    const removedVariants = current.variants.filter(
+      (variant) => variant.generationId === generationId
+    )
+    const removedVariantIds = new Set(removedVariants.map((variant) => variant.id))
+    const removedAssetIds = new Set(removedVariants.map((variant) => variant.assetId))
+    const removedAssets = current.assets.filter(
+      (asset) => asset.type === 'output' && removedAssetIds.has(asset.id)
+    )
+    const now = new Date().toISOString()
+
+    await this.storage.write({
+      ...current,
+      assets: current.assets.filter(
+        (asset) => asset.type !== 'output' || !removedAssetIds.has(asset.id)
+      ),
+      generations: current.generations.filter((item) => item.id !== generationId),
+      variants: current.variants.filter((variant) => variant.generationId !== generationId),
+      logoProjects: current.logoProjects.map((project) => {
+        const favoriteVariantIds = project.favoriteVariantIds.filter(
+          (id) => !removedVariantIds.has(id)
+        )
+        const generationIds = project.generationIds.filter((id) => id !== generationId)
+        const changed =
+          favoriteVariantIds.length !== project.favoriteVariantIds.length ||
+          generationIds.length !== project.generationIds.length
+
+        return changed ? { ...project, favoriteVariantIds, generationIds, updatedAt: now } : project
+      })
+    })
+
+    await Promise.all(
+      removedAssets.flatMap((asset) => [
+        rm(asset.filePath, { force: true }),
+        rm(asset.thumbnailPath, { force: true })
+      ])
+    )
   }
 
   private hydrateGeneration(

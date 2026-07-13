@@ -1,10 +1,11 @@
 import {
   ClockCircleOutlined,
   CloseCircleOutlined,
+  DeleteOutlined,
   StarFilled,
   StarOutlined
 } from '@ant-design/icons'
-import { Button, Empty, Input, List, Segmented, Space, Typography } from 'antd'
+import { Button, Empty, Input, List, Modal, Segmented, Space, Typography } from 'antd'
 import { useMemo, useState } from 'react'
 import { thumbnailProtocolUrl } from '../../../shared/assetProtocol'
 import type { GenerationRecord } from '../../../shared/types'
@@ -13,16 +14,20 @@ import { summarizeGenerationError } from '../utils/generationStatus'
 interface HistoryPanelProps {
   generations: GenerationRecord[]
   selectedId?: string
+  onDelete: (generationId: string) => Promise<void>
   onSelect: (generation: GenerationRecord) => void
 }
 
 export function HistoryPanel({
   generations,
+  onDelete,
   selectedId,
   onSelect
 }: HistoryPanelProps): React.JSX.Element {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'favorite'>('all')
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const filteredGenerations = useMemo(() => {
     return generations.filter((generation) => {
@@ -31,6 +36,23 @@ export function HistoryPanel({
       return matchesQuery && matchesFilter
     })
   }, [filter, generations, query])
+
+  const deleteTarget = useMemo(
+    () => generations.find((generation) => generation.id === deleteTargetId) ?? null,
+    [deleteTargetId, generations]
+  )
+
+  async function handleConfirmDelete(): Promise<void> {
+    if (!deleteTarget) return
+
+    setDeleting(true)
+    try {
+      await onDelete(deleteTarget.id)
+      setDeleteTargetId(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <aside className="history-panel">
@@ -95,17 +117,41 @@ export function HistoryPanel({
                     </Typography.Text>
                   )}
                 </div>
-                <Button
-                  aria-label={generation.favorite ? '已收藏' : '未收藏'}
-                  icon={generation.favorite ? <StarFilled /> : <StarOutlined />}
-                  size="small"
-                  type="text"
-                />
+                <Space size={2} onClick={(event) => event.stopPropagation()}>
+                  <Button
+                    aria-label={generation.favorite ? '已收藏' : '未收藏'}
+                    icon={generation.favorite ? <StarFilled /> : <StarOutlined />}
+                    size="small"
+                    type="text"
+                  />
+                  <Button
+                    aria-label="删除历史记录"
+                    danger
+                    icon={<DeleteOutlined />}
+                    size="small"
+                    type="text"
+                    onClick={() => setDeleteTargetId(generation.id)}
+                  />
+                </Space>
               </List.Item>
             )
           }}
         />
       )}
+      <Modal
+        cancelText="取消"
+        confirmLoading={deleting}
+        okButtonProps={{ danger: true }}
+        okText="删除"
+        open={Boolean(deleteTarget)}
+        title="删除这条历史记录？"
+        onCancel={() => setDeleteTargetId(null)}
+        onOk={handleConfirmDelete}
+      >
+        <Typography.Paragraph>
+          删除后会移除这次生成的输出文件和历史记录。用户添加的参考图不会被删除。
+        </Typography.Paragraph>
+      </Modal>
     </aside>
   )
 }

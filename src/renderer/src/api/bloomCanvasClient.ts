@@ -16,6 +16,19 @@ export async function unwrapResult<T>(promise: Promise<AppResult<T>>): Promise<T
   throw new BloomCanvasClientError(result.error.message, result.error.code, result.error.detail)
 }
 
+function requireApiMethod<T extends (...args: never[]) => Promise<AppResult<unknown>>>(
+  method: T | undefined,
+  featureName: string
+): T {
+  if (typeof method !== 'function') {
+    throw new BloomCanvasClientError(
+      `${featureName}需要重新加载应用接口。请完全退出并重新打开生花后再试。`,
+      'preload_api_mismatch'
+    )
+  }
+  return method
+}
+
 export const bloomCanvasClient = {
   providers: {
     list: () => unwrapResult(window.bloomCanvas.providers.list()),
@@ -41,6 +54,10 @@ export const bloomCanvasClient = {
     list: () => unwrapResult(window.bloomCanvas.generations.list()),
     favorite: (generationId: string, favorite: boolean) =>
       unwrapResult(window.bloomCanvas.generations.favorite(generationId, favorite)),
+    remove: (generationId: string) => {
+      const remove = requireApiMethod(window.bloomCanvas.generations.remove, '删除历史记录')
+      return unwrapResult(remove(generationId))
+    },
     retry: (generationId: string) =>
       unwrapResult(window.bloomCanvas.generations.retry(generationId))
   },

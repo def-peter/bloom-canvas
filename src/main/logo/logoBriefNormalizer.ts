@@ -80,7 +80,7 @@ const elementAliases: ReadonlyArray<{ value: string; pattern: RegExp }> = [
 const requirementMarker =
   /(?:必须|需要|明确(?:要求)?(?:使用|包含)?|must|include(?:s|d)?|require(?:s|d)?|required)/i
 const negativeRequirementMarker =
-  /(?:\b(?:not|no|avoid|exclude|without)\b|不需要|无需|无须|不必|非必须|不是必须|并非必须|不要求|不要|避免|禁止|不能使用|不可使用|不(?:推荐|建议)(?:使用)?)/i
+  /(?:\b(?:not|no|never|cannot|avoid|exclude|without|(?:don|doesn|didn|isn|aren|wasn|weren|can|couldn|wouldn|shouldn|mustn|needn|won|shan|haven|hasn|hadn)['’]t)\b|不需要|无需|无须|不必|非必须|不是必须|并非必须|不要求|不要|避免|禁止|不能使用|不可使用|不(?:推荐|建议)(?:使用)?)/i
 const clauseBoundary = /[\n。；;.!?！？，,]|\bbut\b|但/i
 
 export function normalizeLogoBrief(input: LogoBrandBriefV2): NormalizedLogoBrief {

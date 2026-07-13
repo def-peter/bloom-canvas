@@ -131,6 +131,22 @@ describe('normalizeLogoBrief', () => {
       expect(result.dynamicExclusions).toContain('flower petals')
     }
   )
+
+  test.each([
+    ["don't include leaves", 'leaves'],
+    ['never include flower petals', 'flower petals']
+  ])(
+    'does not treat English negated requirements as explicit requests: %s',
+    (referenceNote, element) => {
+      const result = normalizeLogoBrief({
+        ...brief,
+        referenceNote
+      })
+
+      expect(result.explicitlyRequestedElements).not.toContain(element)
+      expect(result.dynamicExclusions).toContain(element)
+    }
+  )
 })
 
 describe('logo brief fingerprints', () => {

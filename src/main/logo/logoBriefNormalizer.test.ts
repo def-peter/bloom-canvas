@@ -117,17 +117,20 @@ describe('normalizeLogoBrief', () => {
     expect(result.dynamicExclusions).toContain('leaves')
   })
 
-  test('does not treat Chinese negated requirements as explicit requests', () => {
-    const result = normalizeLogoBrief({
-      ...brief,
-      referenceNote: '不需要叶子，也非必须使用花瓣'
-    })
+  test.each(['不需要叶子，也非必须使用花瓣', '无需明确使用叶子，也不是必须使用花瓣'])(
+    'does not treat Chinese negated requirements as explicit requests: %s',
+    (referenceNote) => {
+      const result = normalizeLogoBrief({
+        ...brief,
+        referenceNote
+      })
 
-    expect(result.explicitlyRequestedElements).not.toContain('leaves')
-    expect(result.explicitlyRequestedElements).not.toContain('flower petals')
-    expect(result.dynamicExclusions).toContain('leaves')
-    expect(result.dynamicExclusions).toContain('flower petals')
-  })
+      expect(result.explicitlyRequestedElements).not.toContain('leaves')
+      expect(result.explicitlyRequestedElements).not.toContain('flower petals')
+      expect(result.dynamicExclusions).toContain('leaves')
+      expect(result.dynamicExclusions).toContain('flower petals')
+    }
+  )
 })
 
 describe('logo brief fingerprints', () => {

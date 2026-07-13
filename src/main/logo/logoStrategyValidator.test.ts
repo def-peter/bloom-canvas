@@ -243,6 +243,33 @@ describe('validateLogoStrategies', () => {
     expect(validate(strategies)).toMatchObject({ ok: true })
   })
 
+  test('does not match an industry cliche across positive field boundaries', () => {
+    const strategies = validStrategies()
+    strategies[0] = {
+      ...strategies[0],
+      coreMetaphor: 'a winding route ending in alpha',
+      construction: 'beta formed by one broad ribbon'
+    }
+    strategies[1] = {
+      ...strategies[1],
+      coreMetaphor: 'an open threshold framing alpha',
+      construction: 'beta held by one offset plane'
+    }
+    strategies[2] = {
+      ...strategies[2],
+      coreMetaphor: 'a modular system assembling alpha',
+      construction: 'beta built from three solid units'
+    }
+
+    const result = validateLogoStrategies({
+      brief,
+      semantics: { ...logoTestSemantics, industryCliches: ['alpha beta'] },
+      strategies
+    })
+
+    expect(result).toMatchObject({ ok: true })
+  })
+
   test('collects duplicate grammar and nearly identical construction errors', () => {
     const strategies = validStrategies()
     strategies[1] = {

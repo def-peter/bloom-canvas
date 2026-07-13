@@ -130,10 +130,9 @@ export function validateLogoStrategies(input: {
       if (normalizedCliche.length === 0) continue
 
       const usedByEveryStrategy = input.strategies.every((strategy) => {
-        const positiveText = normalizeComparableText(
-          `${strategy.coreMetaphor} ${strategy.construction}`
-        )
-        return positiveText.includes(normalizedCliche)
+        const coreMetaphor = normalizeComparableText(strategy.coreMetaphor)
+        const construction = normalizeComparableText(strategy.construction)
+        return coreMetaphor.includes(normalizedCliche) || construction.includes(normalizedCliche)
       })
       if (usedByEveryStrategy) {
         issues.push(

@@ -227,6 +227,27 @@ describe('validateLogoStrategies', () => {
     expect(result).toMatchObject({ ok: true })
   })
 
+  test('matches plural lotuses against the canonical lotus literal risk', () => {
+    const strategies = validStrategies()
+    strategies[0] = { ...strategies[0], coreMetaphor: 'three lotuses form a path' }
+    strategies[1] = { ...strategies[1], coreMetaphor: 'two lotuses frame an opening' }
+
+    const result = validateLogoStrategies({
+      brief,
+      semantics: { ...logoTestSemantics, literalMetaphorRisks: ['lotus'] },
+      strategies
+    })
+
+    expect(result).toMatchObject({ ok: false })
+    if (!result.ok) {
+      const issue = result.issues.find((candidate) =>
+        candidate.includes('minimumNonLiteralStrategyCount')
+      )
+      expect(issue).toContain('strategy-path')
+      expect(issue).toContain('strategy-frame')
+    }
+  })
+
   test('rejects one industry cliche used positively by all three strategies', () => {
     const strategies = validStrategies()
     strategies[0] = { ...strategies[0], coreMetaphor: 'AI sparkle traveling along a broad path' }

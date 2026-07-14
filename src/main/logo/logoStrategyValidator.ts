@@ -168,6 +168,7 @@ const irregularSingulars = new Map([
   ['feet', 'foot'],
   ['geese', 'goose'],
   ['leaves', 'leaf'],
+  ['lotuses', 'lotus'],
   ['men', 'man'],
   ['mice', 'mouse'],
   ['people', 'person'],

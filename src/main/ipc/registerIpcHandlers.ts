@@ -1,21 +1,26 @@
 import { dialog, ipcMain } from 'electron'
+import { ZodError } from 'zod'
 import { IPC_CHANNELS } from '../../shared/ipc'
 import {
+  buildLogoStrategyPromptPackSchema,
   buildLogoPromptPackSchema,
   createGenerationSchema,
   exportAssetSchema,
   importAssetSchema,
+  generateLogoStrategiesSchema,
   promptOptimizeSchema,
   saveLogoProjectSchema,
   saveProviderSchema
 } from '../../shared/schemas'
 import type { AppErrorPayload, AppResult, AppSettings } from '../../shared/types'
+import { LogoStrategyService } from '../logo/logoStrategyService'
 import { getAppPaths } from '../services/appPaths'
 import { AssetService } from '../services/assetService'
 import { CredentialService } from '../services/credentialService'
 import { GenerationService } from '../services/generationService'
-import { buildLogoPromptPack } from '../services/logoPromptCompiler'
+import { buildLogoPromptPack, buildLogoStrategyPromptPack } from '../services/logoPromptCompiler'
 import { LogoProjectService } from '../services/logoProjectService'
+import { OpenAIResponsesClient } from '../services/openAIResponsesClient'
 import { OpenAICompatibleProvider } from '../services/openAICompatibleProvider'
 import { PromptOptimizeService } from '../services/promptOptimizeService'
 import { ProviderConfigService } from '../services/providerConfigService'
@@ -31,14 +36,16 @@ function err(error: AppErrorPayload): AppResult<never> {
 
 function toErrorPayload(error: unknown): AppErrorPayload {
   const message = error instanceof Error ? error.message : 'Unknown error'
+  if (error instanceof ZodError) return { code: 'validation_error', message }
   if (message.includes('API key')) return { code: 'api_key_missing', message }
+  if (message.includes('Provider request failed') || message.includes('Responses request failed'))
+    return { code: 'provider_error', message }
   if (message.includes('Provider')) return { code: 'provider_missing', message }
   if (message.includes('format') || message.includes('validation'))
     return { code: 'validation_error', message }
   if (message.includes('Asset') || message.includes('file')) return { code: 'file_error', message }
   if (message.includes('fetch') || message.includes('network'))
     return { code: 'network_error', message }
-  if (message.includes('Provider request failed')) return { code: 'provider_error', message }
   return { code: 'unknown_error', message }
 }
 
@@ -51,6 +58,7 @@ export function registerIpcHandlers(): void {
   const imageProvider = new OpenAICompatibleProvider()
   const generations = new GenerationService(storage, providers, imageProvider, assets)
   const logoProjects = new LogoProjectService(storage)
+  const logoStrategies = new LogoStrategyService(new OpenAIResponsesClient())
   const promptOptimizer = new PromptOptimizeService()
 
   ipcMain.handle(IPC_CHANNELS.providerList, async () => ok(await providers.list()))
@@ -177,6 +185,28 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.logoPromptBuild, async (_event, input) => {
     try {
       return ok(buildLogoPromptPack(buildLogoPromptPackSchema.parse(input)))
+    } catch (error) {
+      return err(toErrorPayload(error))
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.logoStrategyGenerate, async (_event, input) => {
+    try {
+      const parsed = generateLogoStrategiesSchema.parse(input)
+      const state = await storage.read()
+      const provider = state.providers.find((item) => item.id === parsed.providerId)
+      if (!provider) throw new Error('Provider is not configured')
+      const apiKey = await providers.getApiKey(provider.id)
+      if (!apiKey) throw new Error('Provider API key is missing')
+      return ok(await logoStrategies.generate(provider, apiKey, parsed))
+    } catch (error) {
+      return err(toErrorPayload(error))
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.logoPromptBuildStrategy, async (_event, input) => {
+    try {
+      return ok(buildLogoStrategyPromptPack(buildLogoStrategyPromptPackSchema.parse(input)))
     } catch (error) {
       return err(toErrorPayload(error))
     }

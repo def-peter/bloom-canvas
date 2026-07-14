@@ -152,13 +152,7 @@ function optionalPromptLine(label: string, value: string | undefined): string | 
 }
 
 function formatPromptValue(value: string): string {
-  const singleLineValue = value.replace(/\s+/g, ' ').trim()
-
-  return Object.values(promptSectionLabels).reduce(
-    (safeValue, sectionLabel) =>
-      safeValue.replaceAll(sectionLabel, `${sectionLabel.slice(0, -1)} -`),
-    singleLineValue
-  )
+  return value.replace(/\s+/g, ' ').trim()
 }
 
 function dedupePromptValues(values: readonly string[]): string[] {

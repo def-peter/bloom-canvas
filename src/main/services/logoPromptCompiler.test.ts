@@ -29,6 +29,29 @@ function strategyPromptInput(
   }
 }
 
+const strategyPromptSectionLabels = [
+  'Brand facts:',
+  'Selected strategy:',
+  'Grammar construction rules:',
+  'Render style:',
+  'Logo type text rules:',
+  'Execution requirements:',
+  'Dynamic exclusions:'
+] as const
+
+function expectOrderedStrategyPromptSections(finalPrompt: string): void {
+  const promptLines = finalPrompt.split('\n')
+  const sectionPositions = strategyPromptSectionLabels.map((label) =>
+    promptLines.findIndex((line) => line === label)
+  )
+
+  expect(sectionPositions.every((position) => position >= 0)).toBe(true)
+  expect(sectionPositions).toEqual([...sectionPositions].sort((left, right) => left - right))
+  for (const label of strategyPromptSectionLabels) {
+    expect(promptLines.filter((line) => line === label)).toHaveLength(1)
+  }
+}
+
 describe('buildLogoPromptPack', () => {
   test('builds one base prompt and one final prompt per style direction', () => {
     const pack = buildLogoPromptPack({
@@ -154,18 +177,7 @@ describe('buildLogoStrategyPromptPack', () => {
       customized: false
     })
 
-    const sectionLabels = [
-      'Brand facts:',
-      'Selected strategy:',
-      'Grammar construction rules:',
-      'Render style:',
-      'Logo type text rules:',
-      'Execution requirements:',
-      'Dynamic exclusions:'
-    ]
-    const sectionPositions = sectionLabels.map((label) => direction.finalPrompt.indexOf(label))
-    expect(sectionPositions.every((position) => position >= 0)).toBe(true)
-    expect(sectionPositions).toEqual([...sectionPositions].sort((left, right) => left - right))
+    expectOrderedStrategyPromptSections(direction.finalPrompt)
 
     expect(direction.finalPrompt).toContain(logoTestBrief.brandName)
     expect(direction.finalPrompt).toContain(logoTestBrief.businessDescription)
@@ -221,21 +233,7 @@ describe('buildLogoStrategyPromptPack', () => {
     }
     const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInput({ brief, revision }))
       .directions[0]
-    const sectionLabels = [
-      'Brand facts:',
-      'Selected strategy:',
-      'Grammar construction rules:',
-      'Render style:',
-      'Logo type text rules:',
-      'Execution requirements:',
-      'Dynamic exclusions:'
-    ]
-    const sectionPositions = sectionLabels.map((label) => finalPrompt.indexOf(label))
-
-    expect(sectionPositions).toEqual([...sectionPositions].sort((left, right) => left - right))
-    for (const label of sectionLabels) {
-      expect(finalPrompt.split(label)).toHaveLength(2)
-    }
+    expectOrderedStrategyPromptSections(finalPrompt)
   })
 
   test('merges and deduplicates normalized dynamic exclusions with explicitly avoided elements', () => {
@@ -330,6 +328,16 @@ describe('buildLogoStrategyPromptPack', () => {
     expect(finalPrompt).toContain(`Use exactly the full brand name: ${brief.brandName}`)
     expect(finalPrompt).toContain('exact spelling and readability')
     expect(finalPrompt).toContain('no other text or pseudo-text')
+  })
+
+  test('preserves an exact wordmark brand name that matches a reserved section label', () => {
+    const brief = { ...logoTestBrief, brandName: 'Brand facts:', logoType: 'wordmark' as const }
+    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInput({ brief }))
+      .directions[0]
+
+    expect(finalPrompt).toContain('Use exactly the full brand name: Brand facts:')
+    expect(finalPrompt).toContain('preserve exact spelling and readability')
+    expectOrderedStrategyPromptSections(finalPrompt)
   })
 
   test('forbids circular micro-text, slogans, and pseudo-text for an emblem', () => {

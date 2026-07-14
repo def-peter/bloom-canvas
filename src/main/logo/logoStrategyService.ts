@@ -23,14 +23,16 @@ Use three different grammarId values. Do not create three color or rendering var
 Do not mention, imitate, or compare against any existing brand, agency, or trademark.
 Return JSON only.`
 
+const modelLogoDesignStrategySchema = logoDesignStrategySchema.omit({ version: true })
+
 const newStrategyOutputSchema = z.object({
   semantics: logoBrandSemanticsSchema,
-  strategies: z.array(logoDesignStrategySchema).length(3)
+  strategies: z.array(modelLogoDesignStrategySchema).length(3)
 })
 
 const replacementOutputSchema = z.object({
   semantics: logoBrandSemanticsSchema,
-  strategies: z.array(logoDesignStrategySchema).length(1)
+  strategies: z.array(modelLogoDesignStrategySchema).length(1)
 })
 
 type StrategyAssessment =
@@ -125,6 +127,7 @@ function resolveReplacementContext(
 }
 
 function buildSystemPrompt(replacement: ReplacementContext | undefined): string {
+  const outputSchema = replacement ? replacementOutputSchema : newStrategyOutputSchema
   const outputRules = replacement
     ? [
         'Return one JSON object with exactly this top-level shape: { semantics, strategies }.',
@@ -137,7 +140,15 @@ function buildSystemPrompt(replacement: ReplacementContext | undefined): string 
         'strategies must contain exactly 3 entries with distinct ids, grammarId values, metaphors, constructions, and silhouettes.'
       ]
 
-  return [CORE_REQUIREMENTS, ...outputRules].join('\n')
+  return [
+    CORE_REQUIREMENTS,
+    ...outputRules,
+    'Follow this complete JSON Schema contract for the response. Every required field must be present.',
+    'Do not return a version field; strategy versions are owned and assigned by the service.',
+    'MODEL_OUTPUT_SCHEMA_BEGIN',
+    JSON.stringify(z.toJSONSchema(outputSchema), null, 2),
+    'MODEL_OUTPUT_SCHEMA_END'
+  ].join('\n')
 }
 
 function buildPromptPayload(

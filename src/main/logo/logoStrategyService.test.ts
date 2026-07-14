@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import type { GenerateLogoStrategiesInput, LogoDesignRevision } from '../../shared/logoDesign'
+import type {
+  GenerateLogoStrategiesInput,
+  LogoDesignRevision,
+  LogoDesignStrategy
+} from '../../shared/logoDesign'
 import {
   logoTestBrief,
   logoTestProvider,
@@ -17,6 +21,55 @@ and evidence copied exactly from functionalTruths or differentiators.
 Use three different grammarId values. Do not create three color or rendering variants.
 Do not mention, imitate, or compare against any existing brand, agency, or trademark.
 Return JSON only.`
+const SEMANTICS_FIELDS = [
+  'functionalTruths',
+  'emotionalQualities',
+  'differentiators',
+  'audienceSignals',
+  'usableMetaphors',
+  'literalMetaphorRisks',
+  'industryCliches',
+  'usageConstraints'
+]
+const MODEL_STRATEGY_FIELDS = [
+  'id',
+  'nameZh',
+  'summaryZh',
+  'grammarId',
+  'brandEvidence',
+  'coreMetaphor',
+  'construction',
+  'silhouette',
+  'composition',
+  'colorPlan',
+  'recommendedRenderStyles',
+  'exclusions',
+  'rationaleZh',
+  'imagePromptEn'
+]
+const RENDER_STYLES = [
+  'flat-monochrome',
+  'flat-duotone',
+  'restrained-gradient',
+  'bold-outline',
+  'soft-2.5d',
+  'soft-volume',
+  'embossed',
+  'skeuomorphic'
+]
+
+interface JsonSchemaNode {
+  type?: string
+  properties?: Record<string, JsonSchemaNode>
+  required?: string[]
+  items?: JsonSchemaNode
+  enum?: unknown[]
+  minItems?: number
+  maxItems?: number
+  minLength?: number
+  maxLength?: number
+  additionalProperties?: boolean
+}
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -43,6 +96,12 @@ function validOutput(): string {
   })
 }
 
+function withoutVersion(strategy: LogoDesignStrategy): Omit<LogoDesignStrategy, 'version'> {
+  const modelStrategy: Partial<LogoDesignStrategy> = { ...strategy }
+  delete modelStrategy.version
+  return modelStrategy as Omit<LogoDesignStrategy, 'version'>
+}
+
 function responsesWith(...outputs: string[]): {
   createText: ReturnType<typeof vi.fn<OpenAIResponsesClient['createText']>>
 } {
@@ -56,6 +115,20 @@ function requestMessages(
   callIndex = 0
 ): Parameters<OpenAIResponsesClient['createText']>[2] {
   return responses.createText.mock.calls[callIndex][2]
+}
+
+function outputContract(systemPrompt: string): JsonSchemaNode {
+  const match = systemPrompt.match(/MODEL_OUTPUT_SCHEMA_BEGIN\n([\s\S]*?)\nMODEL_OUTPUT_SCHEMA_END/)
+  expect(match, 'system prompt must include a complete model output JSON Schema').not.toBeNull()
+  if (!match) throw new Error('model output JSON Schema markers are missing')
+  return JSON.parse(match[1]) as JsonSchemaNode
+}
+
+function schemaProperty(schema: JsonSchemaNode, name: string): JsonSchemaNode {
+  const property = schema.properties?.[name]
+  expect(property, `JSON Schema property ${name} must exist`).toBeDefined()
+  if (!property) throw new Error(`JSON Schema property ${name} is missing`)
+  return property
 }
 
 function replacementRevision(): LogoDesignRevision {
@@ -74,22 +147,25 @@ function validReplacementOutput(targetId = 'strategy-frame'): string {
   return JSON.stringify({
     semantics: { ...logoTestSemantics, emotionalQualities: ['模型试图修改语义'] },
     strategies: [
-      {
+      withoutVersion({
         ...logoTestRevision.strategies[1],
         id: targetId,
-        version: 88,
         grammarId: 'negative-space-fusion',
         coreMetaphor: 'two creative truths revealing one clear opening',
         construction: 'two bold planes reveal one wide central negative shape',
         silhouette: 'compact paired form with one clear opening'
-      }
+      })
     ]
   })
 }
 
 describe('LogoStrategyService', () => {
-  test('returns a new validated revision with service-owned versions and metadata', async () => {
-    const responses = responsesWith(validOutput())
+  test('accepts model output without version and adds service-owned revision metadata', async () => {
+    const versionlessOutput = JSON.stringify({
+      semantics: logoTestSemantics,
+      strategies: logoTestRevision.strategies.map(withoutVersion)
+    })
+    const responses = responsesWith(versionlessOutput, versionlessOutput)
 
     const revision = await new LogoStrategyService(responses).generate(
       logoTestProvider,
@@ -138,6 +214,86 @@ describe('LogoStrategyService', () => {
     expect(JSON.stringify(requestMessages(responses))).not.toContain('sk-test')
   })
 
+  test('sends the complete creation output contract with field types and constraints', async () => {
+    const responses = responsesWith(validOutput())
+
+    await new LogoStrategyService(responses).generate(logoTestProvider, 'sk-test', input())
+
+    const contract = outputContract(requestMessages(responses)[0].content)
+    expect(contract).toMatchObject({
+      type: 'object',
+      required: ['semantics', 'strategies'],
+      additionalProperties: false
+    })
+
+    const semantics = schemaProperty(contract, 'semantics')
+    expect(semantics).toMatchObject({
+      type: 'object',
+      required: SEMANTICS_FIELDS,
+      additionalProperties: false
+    })
+    for (const field of SEMANTICS_FIELDS) {
+      expect(schemaProperty(semantics, field)).toMatchObject({
+        type: 'array',
+        maxItems: 12,
+        items: { type: 'string', minLength: 1, maxLength: 240 }
+      })
+    }
+
+    const strategies = schemaProperty(contract, 'strategies')
+    expect(strategies).toMatchObject({ type: 'array', minItems: 3, maxItems: 3 })
+    const strategy = strategies.items
+    expect(strategy).toMatchObject({
+      type: 'object',
+      required: MODEL_STRATEGY_FIELDS,
+      additionalProperties: false
+    })
+    expect(strategy?.properties).not.toHaveProperty('version')
+
+    const stringFields: Record<string, number> = {
+      id: 80,
+      nameZh: 40,
+      summaryZh: 240,
+      coreMetaphor: 240,
+      construction: 400,
+      silhouette: 240,
+      composition: 240,
+      colorPlan: 240,
+      rationaleZh: 400,
+      imagePromptEn: 12000
+    }
+    for (const [field, maxLength] of Object.entries(stringFields)) {
+      expect(schemaProperty(strategy!, field)).toMatchObject({
+        type: 'string',
+        minLength: 1,
+        maxLength
+      })
+    }
+
+    expect(schemaProperty(strategy!, 'grammarId')).toMatchObject({
+      type: 'string',
+      enum: logoGrammarCards.map((card) => card.id)
+    })
+    expect(schemaProperty(strategy!, 'brandEvidence')).toMatchObject({
+      type: 'array',
+      minItems: 1,
+      maxItems: 4,
+      items: { type: 'string', minLength: 1, maxLength: 240 }
+    })
+    expect(schemaProperty(strategy!, 'recommendedRenderStyles')).toMatchObject({
+      type: 'array',
+      minItems: 1,
+      maxItems: 4,
+      items: { type: 'string', enum: RENDER_STYLES }
+    })
+    expect(schemaProperty(strategy!, 'exclusions')).toMatchObject({
+      type: 'array',
+      minItems: 1,
+      maxItems: 12,
+      items: { type: 'string', minLength: 1, maxLength: 120 }
+    })
+  })
+
   test('accepts one complete top-level Markdown JSON fence', async () => {
     const responses = responsesWith(`  \n\`\`\`json\n${validOutput()}\n\`\`\`\n `)
 
@@ -173,6 +329,9 @@ describe('LogoStrategyService', () => {
     expect(repairRequest).toContain(originalOutput)
     expect(repairRequest).toContain('JSON parse failed')
     expect(repairRequest).toContain('Rewrite the full strategy set of exactly 3 strategies.')
+    expect(outputContract(requestMessages(responses, 1)[0].content)).toEqual(
+      outputContract(requestMessages(responses)[0].content)
+    )
   })
 
   test('repairs Zod-invalid empty IDs as an explicit full strategy-set rewrite', async () => {
@@ -276,6 +435,9 @@ describe('LogoStrategyService', () => {
     expect(systemMessage.content).toContain('strategies must contain exactly 1 entry')
     expect(systemMessage.content).toContain('The single strategy id must remain "strategy-frame".')
     expect(userMessage.content).toContain('"replaceStrategyId":"strategy-frame"')
+    const strategiesContract = schemaProperty(outputContract(systemMessage.content), 'strategies')
+    expect(strategiesContract).toMatchObject({ type: 'array', minItems: 1, maxItems: 1 })
+    expect(strategiesContract.items?.properties).not.toHaveProperty('version')
   })
 
   test('rejects replacement without an existing revision before calling the API', async () => {

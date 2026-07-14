@@ -162,6 +162,28 @@ function formatExactPromptValue(value: string): string {
   if (encodedValue === undefined) throw new Error('Unable to encode exact prompt value')
 
   return encodedValue
+    .replaceAll('\u0085', '\\u0085')
+    .replaceAll('\u2028', '\\u2028')
+    .replaceAll('\u2029', '\\u2029')
+}
+
+function isLatinLettermark(value: string): boolean {
+  let baseLetterCount = 0
+
+  for (const character of value) {
+    const isLatinBase = /\p{Letter}/u.test(character) && /\p{Script=Latin}/u.test(character)
+    if (isLatinBase) {
+      baseLetterCount += 1
+      if (baseLetterCount > 3) return false
+      continue
+    }
+
+    const isLatinMark =
+      /\p{Mark}/u.test(character) && /\p{Script_Extensions=Latin}/u.test(character)
+    if (!isLatinMark || baseLetterCount === 0) return false
+  }
+
+  return baseLetterCount > 0
 }
 
 function dedupePromptValues(values: readonly string[]): string[] {
@@ -205,7 +227,7 @@ function buildLettermarkTextRules(brief: LogoBrandBriefV2): string {
     )
   }
 
-  if (/^(?:\p{Script=Latin}\p{M}*){1,3}$/u.test(shortName)) {
+  if (isLatinLettermark(shortName)) {
     return `Use exactly these letters: ${shortName}; no other letters or pseudo-text; preserve exact letter identity and readability.`
   }
 
@@ -242,6 +264,11 @@ export function buildLogoStrategyPromptPack(
   }
 
   const normalizedBrief = normalizeLogoBrief(input.brief)
+  const renderStyleOverrides = new Map<string, LogoRenderStyle>(
+    Object.entries(input.renderStyles ?? {}).filter(
+      (entry): entry is [string, LogoRenderStyle] => entry[1] !== undefined
+    )
+  )
   const strategyIds = new Set<string>()
   const grammarIds = new Set<string>()
   for (const strategy of input.revision.strategies) {
@@ -256,7 +283,7 @@ export function buildLogoStrategyPromptPack(
     grammarIds.add(strategy.grammarId)
   }
 
-  const unknownRenderStyleKey = Object.keys(input.renderStyles ?? {}).find(
+  const unknownRenderStyleKey = [...renderStyleOverrides.keys()].find(
     (strategyId) => !strategyIds.has(strategyId)
   )
   if (unknownRenderStyleKey) {
@@ -282,7 +309,7 @@ export function buildLogoStrategyPromptPack(
       )
     }
 
-    const renderStyleOverride = input.renderStyles?.[strategy.id]
+    const renderStyleOverride = renderStyleOverrides.get(strategy.id)
     const renderStyle = renderStyleOverride ?? strategy.recommendedRenderStyles[0]
     if (!renderStyle) {
       throw new Error(`Logo strategy "${strategy.id}" has no default render style`)
@@ -292,7 +319,7 @@ export function buildLogoStrategyPromptPack(
       strategy,
       grammarCard,
       renderStyle,
-      customized: renderStyleOverride !== undefined
+      customized: renderStyleOverrides.has(strategy.id)
     })
   }
 

@@ -11,7 +11,10 @@ import {
   logoTestRevision,
   logoTestStrategy
 } from '../../shared/logoDesign.testFixtures'
-import { logoStrategyPromptPackSchema } from '../../shared/schemas'
+import {
+  buildLogoStrategyPromptPackSchema,
+  logoStrategyPromptPackSchema
+} from '../../shared/schemas'
 import { logoGrammarCards } from '../logo/logoGrammarLibrary'
 import {
   buildLogoPromptPack,
@@ -69,8 +72,10 @@ const strategyPromptSectionLabels = [
   'Dynamic exclusions:'
 ] as const
 
+const promptLineSeparatorPattern = /\r\n|[\n\r\u0085\u2028\u2029]/
+
 function expectOrderedStrategyPromptSections(finalPrompt: string): void {
-  const promptLines = finalPrompt.split('\n')
+  const promptLines = finalPrompt.split(promptLineSeparatorPattern)
   const sectionPositions = strategyPromptSectionLabels.map((label) =>
     promptLines.findIndex((line) => line === label)
   )
@@ -84,7 +89,9 @@ function expectOrderedStrategyPromptSections(finalPrompt: string): void {
 
 function exactBrandNameFromPrompt(finalPrompt: string): string {
   const prefix = '- Brand name (exact JSON string literal): '
-  const brandNameLine = finalPrompt.split('\n').find((line) => line.startsWith(prefix))
+  const brandNameLine = finalPrompt
+    .split(promptLineSeparatorPattern)
+    .find((line) => line.startsWith(prefix))
   expect(brandNameLine).toBeDefined()
 
   return JSON.parse(brandNameLine!.slice(prefix.length)) as string
@@ -340,6 +347,16 @@ describe('buildLogoStrategyPromptPack', () => {
   })
 
   test.each([
+    ['a Cyrillic combining mark', 'A\u0483'],
+    ['a variation selector', 'A\uFE0F'],
+    ['a Roman numeral', 'Ⅰ']
+  ])('rejects a Latin lettermark containing %s', (_, shortName) => {
+    const brief = { ...logoTestBrief, logoType: 'lettermark' as const, shortName }
+
+    expect(() => buildLogoStrategyPromptPack(strategyPromptInputForBrief(brief))).toThrow(/invalid/)
+  })
+
+  test.each([
     [undefined, 'missing'],
     ['', 'empty'],
     ['ABCD', '1-3 Latin letters'],
@@ -422,6 +439,23 @@ describe('buildLogoStrategyPromptPack', () => {
 
     expect(exactBrandNameFromPrompt(finalPrompt)).toBe(brandName)
     expect(finalPrompt).toContain(JSON.stringify(brandName))
+    expectOrderedStrategyPromptSections(finalPrompt)
+  })
+
+  test('escapes every Unicode line separator in an exact wordmark literal', () => {
+    const lineSeparators = ['\u0085', '\u2028', '\u2029']
+    const brandName = `ACME${lineSeparators[0]}Labs${lineSeparators[1]}Brand${lineSeparators[2]}End`
+    const brief = { ...logoTestBrief, brandName, logoType: 'wordmark' as const }
+    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInputForBrief(brief))
+      .directions[0]
+
+    expect(exactBrandNameFromPrompt(finalPrompt)).toBe(brandName)
+    for (const separator of lineSeparators) {
+      expect(finalPrompt).not.toContain(separator)
+    }
+    expect(finalPrompt).toContain('\\u0085')
+    expect(finalPrompt).toContain('\\u2028')
+    expect(finalPrompt).toContain('\\u2029')
     expectOrderedStrategyPromptSections(finalPrompt)
   })
 
@@ -525,6 +559,32 @@ describe('buildLogoStrategyPromptPack', () => {
         strategyPromptInput({ renderStyles: { 'unknown-strategy': 'flat-monochrome' } })
       )
     ).toThrow(/unknown render style override.*unknown-strategy/i)
+  })
+
+  test('does not treat prototype-named strategy IDs as render style overrides', () => {
+    const strategyIds = ['constructor', '__proto__', 'ordinary-strategy']
+    const revision: LogoDesignRevision = {
+      ...logoTestRevision,
+      strategies: logoTestRevision.strategies.map((strategy, index) => ({
+        ...strategy,
+        id: strategyIds[index]
+      })),
+      selectedStrategyIds: strategyIds
+    }
+    const input = buildLogoStrategyPromptPackSchema.parse(
+      strategyPromptInput({ revision, renderStyles: {} })
+    )
+
+    const pack = buildLogoStrategyPromptPack(input)
+
+    expect(pack.directions.map((direction) => direction.renderStyle)).toEqual(
+      revision.strategies.map((strategy) => strategy.recommendedRenderStyles[0])
+    )
+    expect(pack.directions.every((direction) => direction.customized === false)).toBe(true)
+    expect(pack.directions.every((direction) => !direction.finalPrompt.includes('undefined'))).toBe(
+      true
+    )
+    expect(logoStrategyPromptPackSchema.parse(pack)).toEqual(pack)
   })
 
   test('throws a clear error when a strategy grammar card cannot be found', () => {

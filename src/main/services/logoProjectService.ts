@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid'
+import type { LogoBrandBriefV2 } from '../../shared/logoDesign'
 import type {
   GenerationId,
   LogoProject,
@@ -7,6 +8,7 @@ import type {
   SaveLogoProjectInput
 } from '../../shared/types'
 import { avoidedElementsSchema } from '../../shared/schemas'
+import { createBriefFingerprint, createPromptFingerprint } from '../logo/logoBriefNormalizer'
 import { buildLogoPromptPack } from './logoPromptCompiler'
 import type { StorageService } from './storageService'
 
@@ -36,19 +38,16 @@ function migrateAvoidedElements(avoidElements: string | undefined): string[] {
 
 function resolveAvoidedElements(
   input: SaveLogoProjectInput,
-  existing: LogoProject | undefined,
-  briefVersion: number | undefined
-): string[] | undefined {
+  existing: LogoProject | undefined
+): string[] {
   if (input.avoidedElements !== undefined) return input.avoidedElements
 
-  const usesV2AvoidedElements =
-    briefVersion !== undefined || existing?.avoidedElements !== undefined
   if (input.avoidElements !== undefined) {
-    return usesV2AvoidedElements ? migrateAvoidedElements(input.avoidElements) : undefined
+    return migrateAvoidedElements(input.avoidElements)
   }
 
   if (existing?.avoidedElements !== undefined) return existing.avoidedElements
-  return briefVersion === undefined ? undefined : migrateAvoidedElements(existing?.avoidElements)
+  return migrateAvoidedElements(existing?.avoidElements)
 }
 
 export class LogoProjectService {
@@ -67,6 +66,9 @@ export class LogoProjectService {
   }
 
   async save(input: SaveLogoProjectInput): Promise<LogoProject> {
+    const logoType = input.logoTypes[0]
+    if (!logoType) throw new Error('Logo project requires a logo type')
+
     const now = new Date().toISOString()
     const state = await this.storage.read()
     const existing = input.id
@@ -80,18 +82,51 @@ export class LogoProjectService {
       : styleDirections.length > 0
         ? buildLogoPromptPack({ ...input, styleDirections })
         : undefined
-    const briefVersion = input.briefVersion ?? existing?.briefVersion
-    const avoidedElements = resolveAvoidedElements(input, existing, briefVersion)
+    const avoidedElements = resolveAvoidedElements(input, existing)
     const avoidElements =
       input.avoidedElements !== undefined
         ? input.avoidedElements.join('，')
         : (input.avoidElements ?? existing?.avoidElements)
+    const preferredColors = input.preferredColors ?? []
+    const avoidedColors = input.avoidedColors ?? []
+    const usageScenarios = input.usageScenarios ?? []
+    const nextBrief: LogoBrandBriefV2 = {
+      brandName: input.brandName,
+      brandNameAlt: input.brandNameAlt,
+      shortName: input.shortName,
+      industry: input.industry,
+      businessDescription: input.businessDescription,
+      targetAudience: input.targetAudience,
+      brandKeywords: input.brandKeywords,
+      differentiator: input.differentiator,
+      avoidedElements,
+      preferredColors,
+      avoidedColors,
+      logoType,
+      usageScenarios,
+      referenceNote: input.referenceNote
+    }
+    // Reference guidance changes prompts, but does not invalidate approved strategies.
+    const nextFingerprint = createBriefFingerprint({
+      ...nextBrief,
+      referenceNote: undefined
+    })
+    const nextPromptFingerprint = createPromptFingerprint(nextBrief)
+    const briefChanged = Boolean(existing && existing.briefFingerprint !== nextFingerprint)
+    const briefVersion = existing ? (existing.briefVersion ?? 1) + (briefChanged ? 1 : 0) : 1
+    const promptChanged = Boolean(existing && existing.promptFingerprint !== nextPromptFingerprint)
+    const promptVersion = existing ? (existing.promptVersion ?? 1) + (promptChanged ? 1 : 0) : 1
+    const designRevision = input.designRevision ?? existing?.designRevision
+    const strategyPromptPack =
+      briefChanged || promptChanged
+        ? existing?.strategyPromptPack
+        : (input.strategyPromptPack ?? existing?.strategyPromptPack)
     const nextProject: LogoProject = {
       id: existing?.id ?? input.id ?? nanoid(),
       briefVersion,
-      briefFingerprint: input.briefFingerprint ?? existing?.briefFingerprint,
-      promptVersion: input.promptVersion ?? existing?.promptVersion,
-      promptFingerprint: input.promptFingerprint ?? existing?.promptFingerprint,
+      briefFingerprint: nextFingerprint,
+      promptVersion,
+      promptFingerprint: nextPromptFingerprint,
       brandName: input.brandName,
       brandNameAlt: input.brandNameAlt,
       shortName: input.shortName,
@@ -103,16 +138,16 @@ export class LogoProjectService {
       differentiator: input.differentiator,
       avoidElements,
       avoidedElements,
-      preferredColors: input.preferredColors ?? [],
-      avoidedColors: input.avoidedColors ?? [],
+      preferredColors,
+      avoidedColors,
       logoTypes: input.logoTypes,
       styleDirections,
-      usageScenarios: input.usageScenarios ?? [],
+      usageScenarios,
       referenceImageIds: input.referenceImageIds,
       referenceNote: input.referenceNote,
       promptPack,
-      designRevision: input.designRevision ?? existing?.designRevision,
-      strategyPromptPack: input.strategyPromptPack ?? existing?.strategyPromptPack,
+      designRevision,
+      strategyPromptPack,
       generationIds: existing?.generationIds ?? [],
       favoriteVariantIds: existing?.favoriteVariantIds ?? [],
       createdAt: existing?.createdAt ?? now,

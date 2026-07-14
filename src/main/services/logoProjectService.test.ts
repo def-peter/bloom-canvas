@@ -2,9 +2,14 @@ import { mkdtemp, rm } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
-import { logoTestPromptPack, logoTestRevision } from '../../shared/logoDesign.testFixtures'
+import {
+  logoTestBrief,
+  logoTestPromptPack,
+  logoTestRevision
+} from '../../shared/logoDesign.testFixtures'
 import { saveLogoProjectSchema } from '../../shared/schemas'
 import type { LogoProject, SaveLogoProjectInput } from '../../shared/types'
+import { createBriefFingerprint, createPromptFingerprint } from '../logo/logoBriefNormalizer'
 import type { AppPaths } from './appPaths'
 import { LogoProjectService } from './logoProjectService'
 import { defaultSettings, StorageService } from './storageService'
@@ -85,6 +90,26 @@ function parseProjectUpdate(
   })
 }
 
+function v2ProjectInput(overrides: Partial<SaveLogoProjectInput> = {}): SaveLogoProjectInput {
+  return {
+    brandName: logoTestBrief.brandName,
+    brandNameAlt: logoTestBrief.brandNameAlt,
+    shortName: logoTestBrief.shortName,
+    industry: logoTestBrief.industry,
+    businessDescription: logoTestBrief.businessDescription,
+    targetAudience: logoTestBrief.targetAudience,
+    brandKeywords: logoTestBrief.brandKeywords,
+    differentiator: logoTestBrief.differentiator,
+    avoidedElements: logoTestBrief.avoidedElements,
+    preferredColors: logoTestBrief.preferredColors,
+    avoidedColors: logoTestBrief.avoidedColors,
+    logoTypes: [logoTestBrief.logoType],
+    usageScenarios: logoTestBrief.usageScenarios,
+    referenceImageIds: [],
+    ...overrides
+  }
+}
+
 async function readPersistedProject(projectId: string): Promise<LogoProject> {
   const state = await new StorageService(paths).read()
   const project = state.logoProjects.find((item) => item.id === projectId)
@@ -130,8 +155,178 @@ describe('LogoProjectService', () => {
       'robot head',
       '齿轮'
     ])
+    const migratedBrief = {
+      brandName: existing.brandName,
+      industry: existing.industry,
+      businessDescription: existing.businessDescription,
+      brandKeywords: existing.brandKeywords,
+      avoidedElements: persisted.avoidedElements ?? [],
+      preferredColors: existing.preferredColors,
+      avoidedColors: existing.avoidedColors,
+      logoType: logoTestBrief.logoType,
+      usageScenarios: existing.usageScenarios
+    }
+    expect(persisted.briefVersion).toBe(2)
+    expect(persisted.briefFingerprint).toBe(createBriefFingerprint(migratedBrief))
+    expect(persisted.promptVersion).toBe(2)
+    expect(persisted.promptFingerprint).toBe(createPromptFingerprint(migratedBrief))
     expect(persisted.designRevision).toEqual(logoTestRevision)
-    expect(persisted.strategyPromptPack).toEqual(logoTestPromptPack)
+    expect(persisted.strategyPromptPack).toBeUndefined()
+  })
+
+  test('creates a V2 project with computed fingerprints, initial versions, and supplied artifacts', async () => {
+    const created = await service.save(
+      v2ProjectInput({
+        briefVersion: 99,
+        briefFingerprint: 'spoofed-brief-fingerprint',
+        promptVersion: 88,
+        promptFingerprint: 'spoofed-prompt-fingerprint',
+        designRevision: logoTestRevision,
+        strategyPromptPack: logoTestPromptPack
+      })
+    )
+
+    expect(created).toMatchObject({
+      briefVersion: 1,
+      briefFingerprint: createBriefFingerprint(logoTestBrief),
+      promptVersion: 1,
+      promptFingerprint: createPromptFingerprint(logoTestBrief),
+      designRevision: logoTestRevision,
+      strategyPromptPack: logoTestPromptPack
+    })
+
+    const persisted = await readPersistedProject(created.id)
+    expect(persisted).toEqual(created)
+  })
+
+  test('increments brief and prompt versions for business changes while retaining stale artifacts', async () => {
+    const created = await service.save(
+      v2ProjectInput({
+        designRevision: logoTestRevision,
+        strategyPromptPack: logoTestPromptPack
+      })
+    )
+    const businessDescription = '帮助品牌团队把策略转化为独特标志'
+
+    const updated = await service.save({
+      ...created,
+      businessDescription,
+      briefVersion: 900,
+      briefFingerprint: 'spoofed-update-brief-fingerprint',
+      promptVersion: 800,
+      promptFingerprint: 'spoofed-update-prompt-fingerprint',
+      designRevision: undefined,
+      strategyPromptPack: undefined
+    })
+
+    expect(updated.briefVersion).toBe(2)
+    expect(updated.briefFingerprint).toBe(
+      createBriefFingerprint({ ...logoTestBrief, businessDescription })
+    )
+    expect(updated.promptVersion).toBe(2)
+    expect(updated.promptFingerprint).toBe(
+      createPromptFingerprint({ ...logoTestBrief, businessDescription })
+    )
+    expect(updated.designRevision).toEqual(logoTestRevision)
+    expect(updated.designRevision?.briefVersion).toBe(1)
+    expect(updated.strategyPromptPack).toEqual(logoTestPromptPack)
+    expect(updated.strategyPromptPack?.sourceBriefVersion).toBe(1)
+    expect(updated.strategyPromptPack?.sourcePromptVersion).toBe(1)
+
+    const persisted = await readPersistedProject(created.id)
+    expect(persisted).toEqual(updated)
+  })
+
+  test('increments only prompt version for color and reference changes while retaining stale artifacts', async () => {
+    const created = await service.save(
+      v2ProjectInput({
+        designRevision: logoTestRevision,
+        strategyPromptPack: logoTestPromptPack
+      })
+    )
+
+    const updated = await service.save({
+      ...created,
+      preferredColors: ['青色'],
+      avoidedColors: ['橙色'],
+      referenceNote: '保留清晰的单色轮廓',
+      designRevision: undefined,
+      strategyPromptPack: undefined
+    })
+
+    expect(updated.briefVersion).toBe(1)
+    expect(updated.briefFingerprint).toBe(created.briefFingerprint)
+    expect(updated.promptVersion).toBe(2)
+    expect(updated.promptFingerprint).toBe(
+      createPromptFingerprint({
+        ...logoTestBrief,
+        preferredColors: ['青色'],
+        avoidedColors: ['橙色'],
+        referenceNote: '保留清晰的单色轮廓'
+      })
+    )
+    expect(updated.designRevision).toEqual(logoTestRevision)
+    expect(updated.designRevision?.briefVersion).toBe(1)
+    expect(updated.strategyPromptPack).toEqual(logoTestPromptPack)
+    expect(updated.strategyPromptPack?.sourceBriefVersion).toBe(1)
+    expect(updated.strategyPromptPack?.sourcePromptVersion).toBe(1)
+
+    const persisted = await readPersistedProject(created.id)
+    expect(persisted).toEqual(updated)
+  })
+
+  test('keeps versions stable for normalized equivalents and updates prompt packs only without changes', async () => {
+    const created = await service.save(
+      v2ProjectInput({
+        designRevision: logoTestRevision,
+        strategyPromptPack: logoTestPromptPack
+      })
+    )
+    const customizedPromptPack = {
+      ...logoTestPromptPack,
+      directions: logoTestPromptPack.directions.map((direction) => ({
+        ...direction,
+        finalPrompt: `${direction.finalPrompt} Use the approved custom balance.`,
+        customized: true
+      }))
+    }
+
+    const normalizedEquivalent = await service.save({
+      ...created,
+      brandName: ` ${created.brandName} `,
+      brandKeywords: ['创造力', '清晰', '清晰'],
+      avoidedElements: [' 复杂花瓣 ', '复杂花瓣'],
+      preferredColors: [' 蓝色 ', '蓝色'],
+      avoidedColors: ['墨绿色', '墨绿色'],
+      usageScenarios: ['website', 'app-icon', 'website'],
+      strategyPromptPack: customizedPromptPack
+    })
+
+    expect(normalizedEquivalent.briefVersion).toBe(1)
+    expect(normalizedEquivalent.briefFingerprint).toBe(created.briefFingerprint)
+    expect(normalizedEquivalent.promptVersion).toBe(1)
+    expect(normalizedEquivalent.promptFingerprint).toBe(created.promptFingerprint)
+    expect(normalizedEquivalent.designRevision).toEqual(logoTestRevision)
+    expect(normalizedEquivalent.strategyPromptPack).toEqual(customizedPromptPack)
+
+    const unchanged = await service.save({
+      ...normalizedEquivalent,
+      strategyPromptPack: undefined
+    })
+    expect(unchanged.briefVersion).toBe(1)
+    expect(unchanged.promptVersion).toBe(1)
+    expect(unchanged.designRevision).toEqual(logoTestRevision)
+    expect(unchanged.strategyPromptPack).toEqual(customizedPromptPack)
+
+    const persisted = await readPersistedProject(created.id)
+    expect(persisted).toEqual(unchanged)
+  })
+
+  test('rejects an empty logo type list before writing a project', async () => {
+    await expect(service.save(v2ProjectInput({ logoTypes: [] }))).rejects.toThrow(/logo type/i)
+
+    const state = await storage.read()
+    expect(state.logoProjects).toEqual([])
   })
 
   test('clears legacy directions and prompt pack only when an update explicitly requests it', async () => {

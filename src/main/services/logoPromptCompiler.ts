@@ -5,8 +5,58 @@ import type {
   LogoType,
   LogoUsageScenario
 } from '../../shared/types'
+import type {
+  BuildLogoStrategyPromptPackInput,
+  LogoBrandBriefV2,
+  LogoRenderStyle,
+  LogoStrategyPromptPack
+} from '../../shared/logoDesign'
+import { logoGrammarCards } from '../logo/logoGrammarLibrary'
+import { normalizeLogoBrief } from '../logo/logoBriefNormalizer'
 
-export const LOGO_QUALITY_RULES_VERSION = 1 as const
+export const LOGO_QUALITY_RULES_VERSION = 2 as const
+
+const renderStyleInstructions: Record<LogoRenderStyle, string> = {
+  'flat-monochrome':
+    'Use a flat monochrome treatment with bold solid shapes and no shading or material effects.',
+  'flat-duotone':
+    'Use two flat solid colors with crisp boundaries, strong contrast, and no gradients.',
+  'restrained-gradient':
+    'Use one restrained gradient within a simple silhouette, with no glow or atmospheric effects.',
+  'bold-outline':
+    'Use bold, uniform outlines with broad internal gaps and no fragile decorative strokes.',
+  'soft-2.5d':
+    'Use restrained soft 2.5D depth with simple planes; preserve a flat monochrome master structure; not only a material mockup.',
+  'soft-volume':
+    'Use soft volumetric shading on a simple solid form; preserve a flat monochrome master structure; not only a material mockup.',
+  embossed:
+    'Use a restrained embossed treatment with shallow relief; preserve a flat monochrome master structure; not only a material mockup.',
+  skeuomorphic:
+    'Use restrained skeuomorphic material cues without scene props; preserve a flat monochrome master structure; not only a material mockup.'
+}
+
+const executionRequirements = [
+  'exactly one standalone logo mark',
+  'at most two main visual elements',
+  'use broad/wide gaps that remain open at small sizes',
+  'no fragile thin lines or tiny decorative details',
+  'center the mark on a clean/plain background',
+  'not a logo sheet or multiple options',
+  'no mockup, poster, or scene',
+  'works in flat monochrome and at 32px'
+] as const
+
+const MAX_FINAL_PROMPT_LENGTH = 12_000
+
+const promptSectionLabels = {
+  brandFacts: 'Brand facts:',
+  selectedStrategy: 'Selected strategy:',
+  grammarRules: 'Grammar construction rules:',
+  renderStyle: 'Render style:',
+  textRules: 'Logo type text rules:',
+  executionRequirements: 'Execution requirements:',
+  dynamicExclusions: 'Dynamic exclusions:'
+} as const
 
 const styleDirectionLabels: Record<LogoStyleDirectionId, { name: string; instruction: string }> = {
   'modern-minimal': {
@@ -91,6 +141,199 @@ function formatPreferredColors(values: string[] | undefined): string {
   }
 
   return `${text}; solid colors preferred, no gradients unless explicitly requested`
+}
+
+function formatValues(values: readonly string[]): string {
+  return values.length > 0 ? values.map(formatPromptValue).join(', ') : 'none specified'
+}
+
+function optionalPromptLine(label: string, value: string | undefined): string | null {
+  return value ? `- ${label}: ${formatPromptValue(value)}` : null
+}
+
+function formatPromptValue(value: string): string {
+  const singleLineValue = value.replace(/\s+/g, ' ').trim()
+
+  return Object.values(promptSectionLabels).reduce(
+    (safeValue, sectionLabel) =>
+      safeValue.replaceAll(sectionLabel, `${sectionLabel.slice(0, -1)} -`),
+    singleLineValue
+  )
+}
+
+function dedupePromptValues(values: readonly string[]): string[] {
+  const seen = new Set<string>()
+
+  return values.flatMap((value) => {
+    const normalized = value.trim()
+    const key = normalized.toLocaleLowerCase()
+    if (!normalized || seen.has(key)) return []
+
+    seen.add(key)
+    return [normalized]
+  })
+}
+
+function buildLogoTypeTextRules(brief: LogoBrandBriefV2): string {
+  switch (brief.logoType) {
+    case 'symbol-mark':
+    case 'combination-mark':
+      return 'First generation is symbol-only: no brand name, letters, slogan, caption, or pseudo-text.'
+    case 'wordmark':
+      return `Use exactly the full brand name: ${brief.brandName}; preserve exact spelling and readability; no other text or pseudo-text.`
+    case 'emblem':
+      return 'Keep the first emblem symbol-led with no circular or ring text, small text, slogan, or pseudo-text.'
+    case 'lettermark':
+      return buildLettermarkTextRules(brief)
+  }
+}
+
+function buildLettermarkTextRules(brief: LogoBrandBriefV2): string {
+  if (brief.shortName === undefined) {
+    throw new Error(
+      'lettermark shortName is missing; provide 1-3 Latin letters or 1-2 Chinese characters from brandName'
+    )
+  }
+
+  const shortName = brief.shortName.trim()
+  if (!shortName) {
+    throw new Error(
+      'lettermark shortName is empty; provide 1-3 Latin letters or 1-2 Chinese characters from brandName'
+    )
+  }
+
+  if (/^[A-Za-z]{1,3}$/.test(shortName)) {
+    return `Use exactly these letters: ${shortName}; no other letters or pseudo-text; preserve exact letter identity and readability.`
+  }
+
+  if (/^[\p{Script=Han}]{1,2}$/u.test(shortName)) {
+    const availableBrandCharacters = [...brief.brandName]
+    const containsEveryCharacter = [...shortName].every((character) => {
+      const characterIndex = availableBrandCharacters.indexOf(character)
+      if (characterIndex < 0) return false
+
+      availableBrandCharacters.splice(characterIndex, 1)
+      return true
+    })
+    if (!containsEveryCharacter) {
+      throw new Error(
+        `lettermark shortName "${shortName}" is invalid: every Chinese character must appear in brandName "${brief.brandName}"`
+      )
+    }
+
+    return `Use exactly these Chinese characters: ${shortName}; no other characters or pseudo-text; preserve exact character identity and readability.`
+  }
+
+  throw new Error(
+    `lettermark shortName "${shortName}" is invalid; use 1-3 Latin letters or 1-2 Chinese characters from brandName without spaces, digits, or mixed scripts`
+  )
+}
+
+export function buildLogoStrategyPromptPack(
+  input: BuildLogoStrategyPromptPackInput
+): LogoStrategyPromptPack {
+  if (input.revision.strategies.length !== 3) {
+    throw new Error(
+      `Logo strategy prompt pack requires exactly 3 strategies; received ${input.revision.strategies.length}`
+    )
+  }
+
+  const normalizedBrief = normalizeLogoBrief(input.brief)
+  const textRules = buildLogoTypeTextRules(normalizedBrief.brief)
+  const dynamicExclusions = dedupePromptValues([
+    ...normalizedBrief.dynamicExclusions,
+    ...normalizedBrief.brief.avoidedElements
+  ])
+
+  const directions = input.revision.strategies.map((strategy) => {
+    const grammarCard = logoGrammarCards.find((card) => card.id === strategy.grammarId)
+    if (!grammarCard) {
+      throw new Error(
+        `Logo strategy "${strategy.id}" references missing grammar card "${strategy.grammarId}"`
+      )
+    }
+
+    const renderStyleOverride = input.renderStyles?.[strategy.id]
+    const renderStyle = renderStyleOverride ?? strategy.recommendedRenderStyles[0]
+    if (!renderStyle) {
+      throw new Error(`Logo strategy "${strategy.id}" has no default render style`)
+    }
+
+    const finalPrompt = [
+      promptSectionLabels.brandFacts,
+      `- Brand name: ${formatPromptValue(normalizedBrief.brief.brandName)}`,
+      optionalPromptLine('Alternate name', normalizedBrief.brief.brandNameAlt),
+      `- Industry: ${formatPromptValue(normalizedBrief.brief.industry)}`,
+      `- Business description: ${formatPromptValue(normalizedBrief.brief.businessDescription)}`,
+      optionalPromptLine('Target audience', normalizedBrief.brief.targetAudience),
+      `- Brand keywords: ${formatValues(normalizedBrief.brief.brandKeywords)}`,
+      optionalPromptLine('Differentiator', normalizedBrief.brief.differentiator),
+      `- Preferred colors: ${formatValues(normalizedBrief.brief.preferredColors)}`,
+      `- Avoided colors: ${formatValues(normalizedBrief.brief.avoidedColors)}`,
+      `- Usage scenarios: ${formatValues(normalizedBrief.brief.usageScenarios)}`,
+      `- Functional truths: ${formatValues(input.revision.semantics.functionalTruths)}`,
+      `- Emotional qualities: ${formatValues(input.revision.semantics.emotionalQualities)}`,
+      `- Audience signals: ${formatValues(input.revision.semantics.audienceSignals)}`,
+      '',
+      promptSectionLabels.selectedStrategy,
+      `- Strategy: ${formatPromptValue(strategy.nameZh)} (${formatPromptValue(strategy.id)})`,
+      `- Summary: ${formatPromptValue(strategy.summaryZh)}`,
+      `- Brand evidence: ${formatValues(strategy.brandEvidence)}`,
+      `- Core metaphor: ${formatPromptValue(strategy.coreMetaphor)}`,
+      `- Construction: ${formatPromptValue(strategy.construction)}`,
+      `- Silhouette: ${formatPromptValue(strategy.silhouette)}`,
+      `- Composition: ${formatPromptValue(strategy.composition)}`,
+      `- Color plan: ${formatPromptValue(strategy.colorPlan)}`,
+      `- Image prompt: ${formatPromptValue(strategy.imagePromptEn)}`,
+      `- Strategy exclusions: ${formatValues(strategy.exclusions)}`,
+      `- Rationale: ${formatPromptValue(strategy.rationaleZh)}`,
+      '',
+      promptSectionLabels.grammarRules,
+      `- Grammar: ${grammarCard.nameZh} (${grammarCard.id})`,
+      `- Mechanism: ${grammarCard.mechanism}`,
+      ...grammarCard.constructionRules.map((rule) => `- ${rule}`),
+      ...grammarCard.promptFragments.map((fragment) => `- ${fragment}`),
+      '',
+      promptSectionLabels.renderStyle,
+      `- ${renderStyle}: ${renderStyleInstructions[renderStyle]}`,
+      '',
+      promptSectionLabels.textRules,
+      `- ${formatPromptValue(textRules)}`,
+      '',
+      promptSectionLabels.executionRequirements,
+      ...executionRequirements.map((requirement) => `- ${requirement}`),
+      '',
+      promptSectionLabels.dynamicExclusions,
+      `- Avoid: ${formatValues(dynamicExclusions)}`
+    ]
+      .filter((line): line is string => line !== null)
+      .join('\n')
+    if (finalPrompt.length > MAX_FINAL_PROMPT_LENGTH) {
+      throw new Error(
+        `Logo strategy "${strategy.id}" final prompt is ${finalPrompt.length} characters; maximum is ${MAX_FINAL_PROMPT_LENGTH}`
+      )
+    }
+
+    return {
+      strategyId: strategy.id,
+      strategyNameZh: strategy.nameZh,
+      grammarId: strategy.grammarId,
+      sourceBriefVersion: input.revision.briefVersion,
+      sourceStrategyVersion: strategy.version,
+      sourcePromptVersion: input.promptVersion,
+      renderStyle,
+      finalPrompt,
+      customized: renderStyleOverride !== undefined
+    }
+  })
+
+  return {
+    sourceBriefVersion: input.revision.briefVersion,
+    sourceStrategyVersion: input.revision.strategyVersion,
+    sourcePromptVersion: input.promptVersion,
+    grammarLibraryVersion: input.revision.grammarLibraryVersion,
+    directions
+  }
 }
 
 export function buildLogoPromptPack(input: BuildLogoPromptPackInput): LogoPromptPack {

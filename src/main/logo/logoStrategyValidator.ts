@@ -12,28 +12,27 @@ export function validateLogoStrategies(input: {
   strategies: LogoDesignStrategy[]
 }): LogoStrategyValidationResult {
   const issues: string[] = []
-  const duplicateStrategyIndexes = new Map<string, number>()
-  const markDuplicate = (strategyId: string, strategyIndex: number): void => {
-    const currentIndex = duplicateStrategyIndexes.get(strategyId)
-    if (currentIndex === undefined || strategyIndex < currentIndex) {
-      duplicateStrategyIndexes.set(strategyId, strategyIndex)
-    }
+  const duplicateStrategyIndexes = new Set<number>()
+  const markDuplicate = (strategyIndex: number): void => {
+    duplicateStrategyIndexes.add(strategyIndex)
   }
 
   if (input.strategies.length !== 3) {
     issues.push(`strategies must contain exactly 3 entries; received ${input.strategies.length}`)
   }
 
-  const firstById = new Map<string, LogoDesignStrategy>()
+  const strategyIdCounts = new Map<string, number>()
+  const firstIndexById = new Map<string, number>()
   for (const [strategyIndex, strategy] of input.strategies.entries()) {
-    const first = firstById.get(strategy.id)
-    if (first) {
+    strategyIdCounts.set(strategy.id, (strategyIdCounts.get(strategy.id) ?? 0) + 1)
+    const firstIndex = firstIndexById.get(strategy.id)
+    if (firstIndex !== undefined) {
       issues.push(
-        `strategy "${strategy.id}" duplicates id "${strategy.id}" first used by strategy "${first.id}"`
+        `strategy at input index ${strategyIndex} duplicates id "${strategy.id}" first used at input index ${firstIndex}; duplicate id is ambiguous and requires full strategy-set repair`
       )
-      markDuplicate(strategy.id, strategyIndex)
+      markDuplicate(strategyIndex)
     } else {
-      firstById.set(strategy.id, strategy)
+      firstIndexById.set(strategy.id, strategyIndex)
     }
   }
 
@@ -44,7 +43,7 @@ export function validateLogoStrategies(input: {
       issues.push(
         `strategy "${strategy.id}" duplicates grammarId "${strategy.grammarId}" first used by strategy "${first.id}"`
       )
-      markDuplicate(strategy.id, strategyIndex)
+      markDuplicate(strategyIndex)
     } else {
       firstByGrammarId.set(strategy.grammarId, strategy)
     }
@@ -87,7 +86,7 @@ export function validateLogoStrategies(input: {
         issues.push(
           `strategies "${earlier.id}" and "${later.id}" have coreMetaphor similarity ${coreMetaphorSimilarity.toFixed(3)} above 0.72`
         )
-        markDuplicate(later.id, laterIndex)
+        markDuplicate(laterIndex)
       }
 
       const constructionSimilarity = bigramJaccard(
@@ -98,7 +97,7 @@ export function validateLogoStrategies(input: {
         issues.push(
           `strategies "${earlier.id}" and "${later.id}" have construction similarity ${constructionSimilarity.toFixed(3)} above 0.72`
         )
-        markDuplicate(later.id, laterIndex)
+        markDuplicate(laterIndex)
       }
     }
   }
@@ -108,11 +107,10 @@ export function validateLogoStrategies(input: {
       ...input.semantics.literalMetaphorRisks,
       ...input.brief.semanticSeeds.literalMetaphorRisks,
       ...input.brief.brief.avoidedElements
-    ]).map(normalizeComparableText)
+    ])
     const literalStrategyIds = input.strategies
       .filter((strategy) => {
-        const coreMetaphor = normalizeComparableText(strategy.coreMetaphor)
-        return literalRisks.some((risk) => risk.length > 0 && coreMetaphor.includes(risk))
+        return literalRisks.some((risk) => containsForbiddenSemantic(strategy.coreMetaphor, risk))
       })
       .map((strategy) => strategy.id)
     const nonLiteralStrategyCount = input.strategies.length - literalStrategyIds.length
@@ -126,13 +124,13 @@ export function validateLogoStrategies(input: {
 
   if (input.strategies.length === 3) {
     for (const cliche of input.semantics.industryCliches) {
-      const normalizedCliche = normalizeComparableText(cliche)
-      if (normalizedCliche.length === 0) continue
+      if (normalizeSemanticText(cliche).length === 0) continue
 
       const usedByEveryStrategy = input.strategies.every((strategy) => {
-        const coreMetaphor = normalizeComparableText(strategy.coreMetaphor)
-        const construction = normalizeComparableText(strategy.construction)
-        return coreMetaphor.includes(normalizedCliche) || construction.includes(normalizedCliche)
+        return (
+          containsForbiddenSemantic(strategy.coreMetaphor, cliche) ||
+          containsForbiddenSemantic(strategy.construction, cliche)
+        )
       })
       if (usedByEveryStrategy) {
         issues.push(
@@ -143,10 +141,84 @@ export function validateLogoStrategies(input: {
   }
 
   if (issues.length === 0) return { ok: true, strategies: input.strategies }
-  const duplicateStrategyIds = [...duplicateStrategyIndexes.entries()]
-    .sort((left, right) => left[1] - right[1])
-    .map(([strategyId]) => strategyId)
+  const seenDuplicateStrategyIds = new Set<string>()
+  const duplicateStrategyIds = [...duplicateStrategyIndexes]
+    .sort((left, right) => left - right)
+    .flatMap((strategyIndex) => {
+      const strategyId = input.strategies[strategyIndex]?.id
+      if (
+        strategyId === undefined ||
+        strategyIdCounts.get(strategyId) !== 1 ||
+        seenDuplicateStrategyIds.has(strategyId)
+      ) {
+        return []
+      }
+
+      seenDuplicateStrategyIds.add(strategyId)
+      return [strategyId]
+    })
   return { ok: false, issues, duplicateStrategyIds }
+}
+
+const cjkCharacterPattern =
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u
+const semanticWordPattern = /[\p{L}\p{N}]+/gu
+const irregularSingulars = new Map([
+  ['children', 'child'],
+  ['feet', 'foot'],
+  ['geese', 'goose'],
+  ['leaves', 'leaf'],
+  ['men', 'man'],
+  ['mice', 'mouse'],
+  ['people', 'person'],
+  ['teeth', 'tooth'],
+  ['women', 'woman']
+])
+
+function containsForbiddenSemantic(text: string, forbiddenSemantic: string): boolean {
+  const normalizedText = normalizeSemanticText(text)
+  const normalizedForbiddenSemantic = normalizeSemanticText(forbiddenSemantic)
+  if (normalizedForbiddenSemantic.length === 0) return false
+
+  if (cjkCharacterPattern.test(normalizedForbiddenSemantic)) {
+    return normalizedText.includes(normalizedForbiddenSemantic)
+  }
+
+  const textTokens = semanticTokens(normalizedText)
+  const forbiddenTokens = semanticTokens(normalizedForbiddenSemantic)
+  if (forbiddenTokens.length === 0 || forbiddenTokens.length > textTokens.length) return false
+
+  return textTokens.some((_, startIndex) =>
+    forbiddenTokens.every((token, offset) => textTokens[startIndex + offset] === token)
+  )
+}
+
+function normalizeSemanticText(value: string): string {
+  return value.normalize('NFKC').toLowerCase()
+}
+
+function semanticTokens(value: string): string[] {
+  return [...value.matchAll(semanticWordPattern)].map(([token]) => singularizeSemanticToken(token))
+}
+
+function singularizeSemanticToken(token: string): string {
+  const irregular = irregularSingulars.get(token)
+  if (irregular !== undefined) return irregular
+  if (!/^\p{Script=Latin}+$/u.test(token)) return token
+
+  if (token.length > 3 && token.endsWith('ies')) return `${token.slice(0, -3)}y`
+  if (/(?:sses|ches|shes|xes|zes)$/.test(token)) return token.slice(0, -2)
+  if (
+    token.length > 3 &&
+    token.endsWith('s') &&
+    !token.endsWith('ss') &&
+    !token.endsWith('us') &&
+    !token.endsWith('is')
+  ) {
+    return token.slice(0, -1)
+  }
+
+  return token
 }
 
 function normalizeComparableText(value: string): string {

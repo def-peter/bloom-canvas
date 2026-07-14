@@ -53,18 +53,23 @@ describe('validateLogoStrategies', () => {
     }
   })
 
-  test('marks only the later strategy when an id is repeated', () => {
+  test('reports a repeated id as an ambiguous full strategy-set repair', () => {
     const strategies = validStrategies()
-    strategies[1] = { ...strategies[1], id: strategies[0].id }
+    strategies[0] = { ...strategies[0], id: 'x' }
+    strategies[1] = { ...strategies[1], id: 'x' }
+    strategies[2] = { ...strategies[2], id: 'y' }
 
     const result = validate(strategies)
 
     expect(result).toMatchObject({ ok: false })
     if (!result.ok) {
-      expect(
-        result.issues.some((issue) => issue.includes('id') && issue.includes('strategy-path'))
-      ).toBe(true)
-      expect(result.duplicateStrategyIds).toEqual(['strategy-path'])
+      const issue = result.issues.find((candidate) => candidate.includes('duplicates id'))
+      expect(issue).toContain('input index 1')
+      expect(issue).toContain('"x"')
+      expect(issue).toContain('input index 0')
+      expect(issue).toContain('ambiguous')
+      expect(issue).toContain('full strategy-set repair')
+      expect(result.duplicateStrategyIds).toEqual([])
     }
   })
 
@@ -192,8 +197,8 @@ describe('validateLogoStrategies', () => {
     }
     strategies[1] = {
       ...strategies[1],
-      coreMetaphor: 'leaves opening around flower petals',
-      exclusions: ['leaves', 'flower petals']
+      coreMetaphor: '一枚抽象叶片围绕开放画布展开',
+      exclusions: ['叶片', 'flower petals']
     }
 
     const result = validate(strategies)
@@ -206,6 +211,20 @@ describe('validateLogoStrategies', () => {
       expect(issue).toContain('strategy-path')
       expect(issue).toContain('strategy-frame')
     }
+  })
+
+  test('does not match a Latin literal risk inside a longer token', () => {
+    const strategies = validStrategies()
+    strategies[0] = { ...strategies[0], coreMetaphor: 'a route that interleaves with a path' }
+    strategies[1] = { ...strategies[1], coreMetaphor: 'a frame that interleaves open space' }
+
+    const result = validateLogoStrategies({
+      brief,
+      semantics: { ...logoTestSemantics, literalMetaphorRisks: ['leaves'] },
+      strategies
+    })
+
+    expect(result).toMatchObject({ ok: true })
   })
 
   test('rejects one industry cliche used positively by all three strategies', () => {
@@ -223,6 +242,40 @@ describe('validateLogoStrategies', () => {
       expect(issue).toContain('strategy-path')
       expect(issue).toContain('strategy-frame')
       expect(issue).toContain('strategy-grid')
+    }
+  })
+
+  test.each([
+    ['locks', 'lock'],
+    ['boxes', 'box'],
+    ['leaves', 'leaf'],
+    ['shadow people', 'shadow person']
+  ])('matches industry cliche %s against singular phrase %s', (cliche, singularPhrase) => {
+    const strategies = validStrategies()
+    strategies[0] = {
+      ...strategies[0],
+      coreMetaphor: `a ${singularPhrase} formed from one continuous path`
+    }
+    strategies[1] = {
+      ...strategies[1],
+      coreMetaphor: `a ${singularPhrase} held inside an open frame`
+    }
+    strategies[2] = {
+      ...strategies[2],
+      coreMetaphor: `a ${singularPhrase} assembled from solid modules`
+    }
+
+    const result = validateLogoStrategies({
+      brief,
+      semantics: { ...logoTestSemantics, industryCliches: [cliche] },
+      strategies
+    })
+
+    expect(result).toMatchObject({ ok: false })
+    if (!result.ok) {
+      expect(result.issues.some((issue) => issue.includes(`industryCliches "${cliche}"`))).toBe(
+        true
+      )
     }
   })
 
@@ -270,6 +323,21 @@ describe('validateLogoStrategies', () => {
     expect(result).toMatchObject({ ok: true })
   })
 
+  test('does not match a short Latin cliche inside longer tokens', () => {
+    const strategies = validStrategies()
+    strategies[0] = { ...strategies[0], coreMetaphor: 'trail' }
+    strategies[1] = { ...strategies[1], coreMetaphor: 'detail' }
+    strategies[2] = { ...strategies[2], coreMetaphor: 'braided' }
+
+    const result = validateLogoStrategies({
+      brief,
+      semantics: { ...logoTestSemantics, industryCliches: ['AI'] },
+      strategies
+    })
+
+    expect(result).toMatchObject({ ok: true })
+  })
+
   test('collects duplicate grammar and nearly identical construction errors', () => {
     const strategies = validStrategies()
     strategies[1] = {
@@ -297,17 +365,17 @@ describe('validateLogoStrategies', () => {
       ok: false,
       issues: [
         'strategies must contain exactly 3 entries; received 2',
-        'strategy "strategy-path" duplicates id "strategy-path" first used by strategy "strategy-path"',
+        'strategy at input index 1 duplicates id "strategy-path" first used at input index 0; duplicate id is ambiguous and requires full strategy-set repair',
         'strategy "strategy-path" duplicates grammarId "continuous-path" first used by strategy "strategy-path"',
         'strategy "strategy-path" brandEvidence "看起来很高级" is not an exact functionalTruths or differentiators value',
         'strategies "strategy-path" and "strategy-path" have coreMetaphor similarity 1.000 above 0.72',
         'strategies "strategy-path" and "strategy-path" have construction similarity 1.000 above 0.72'
       ],
-      duplicateStrategyIds: ['strategy-path']
+      duplicateStrategyIds: []
     })
   })
 
-  test('keeps duplicateStrategyIds in strategy input order across issue classes', () => {
+  test('keeps only safely locatable duplicateStrategyIds in input order across issue classes', () => {
     const strategies = validStrategies()
     strategies[1] = { ...strategies[1], grammarId: strategies[0].grammarId }
     strategies[2] = { ...strategies[2], id: strategies[0].id }
@@ -316,7 +384,7 @@ describe('validateLogoStrategies', () => {
 
     expect(result).toMatchObject({ ok: false })
     if (!result.ok) {
-      expect(result.duplicateStrategyIds).toEqual(['strategy-frame', 'strategy-path'])
+      expect(result.duplicateStrategyIds).toEqual(['strategy-frame'])
     }
   })
 })

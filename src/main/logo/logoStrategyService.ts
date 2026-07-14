@@ -109,6 +109,11 @@ function resolveReplacementContext(
   if (!input.existingRevision) {
     throw new Error('replaceStrategyId requires existingRevision')
   }
+  if (input.existingRevision.briefVersion !== input.briefVersion) {
+    throw new Error(
+      `strategy validation failed: existingRevision.briefVersion (${input.existingRevision.briefVersion}) is stale for input.briefVersion (${input.briefVersion}); run a full strategy regeneration before replacing one strategy`
+    )
+  }
 
   const matchingIndexes = input.existingRevision.strategies.flatMap((strategy, index) =>
     strategy.id === input.replaceStrategyId ? [index] : []

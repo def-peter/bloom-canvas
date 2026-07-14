@@ -131,9 +131,10 @@ function schemaProperty(schema: JsonSchemaNode, name: string): JsonSchemaNode {
   return property
 }
 
-function replacementRevision(): LogoDesignRevision {
+function replacementRevision(briefVersion = 7): LogoDesignRevision {
   return {
     ...logoTestRevision,
+    briefVersion,
     strategyVersion: 4,
     semantics: { ...logoTestSemantics },
     strategies: logoTestRevision.strategies.map((strategy, index) => ({
@@ -408,7 +409,7 @@ describe('LogoStrategyService', () => {
   })
 
   test('replaces one strategy in place while preserving semantics and untouched objects', async () => {
-    const existingRevision = replacementRevision()
+    const existingRevision = replacementRevision(9)
     const responses = responsesWith(validReplacementOutput())
 
     const revision = await new LogoStrategyService(responses).generate(
@@ -450,6 +451,25 @@ describe('LogoStrategyService', () => {
         input({ replaceStrategyId: 'strategy-frame' })
       )
     ).rejects.toThrow(/existingRevision/)
+    expect(responses.createText).not.toHaveBeenCalled()
+  })
+
+  test('rejects replacement from a stale brief revision before calling the API', async () => {
+    const responses = responsesWith(validReplacementOutput())
+
+    await expect(
+      new LogoStrategyService(responses).generate(
+        logoTestProvider,
+        'sk-test',
+        input({
+          briefVersion: 8,
+          existingRevision: replacementRevision(7),
+          replaceStrategyId: 'strategy-frame'
+        })
+      )
+    ).rejects.toThrow(
+      /strategy validation failed.*existingRevision\.briefVersion.*stale.*full strategy regeneration/i
+    )
     expect(responses.createText).not.toHaveBeenCalled()
   })
 

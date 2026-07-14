@@ -12,6 +12,7 @@ import {
   logoTestStrategy
 } from '../../shared/logoDesign.testFixtures'
 import { logoStrategyPromptPackSchema } from '../../shared/schemas'
+import { logoGrammarCards } from '../logo/logoGrammarLibrary'
 import {
   buildLogoPromptPack,
   buildLogoStrategyPromptPack,
@@ -27,6 +28,35 @@ function strategyPromptInput(
     promptVersion: 3,
     ...overrides
   }
+}
+
+function compatibleRevisionForLogoType(logoType: LogoType): LogoDesignRevision {
+  const grammarIds: LogoGrammarId[] =
+    logoType === 'wordmark'
+      ? ['modular-grid', 'custom-wordmark', 'symbol-as-system']
+      : logoGrammarCards
+          .filter((card) => card.allowedLogoTypes.includes(logoType))
+          .slice(0, 3)
+          .map((card) => card.id)
+  const strategies = grammarIds.map((grammarId, index) =>
+    logoTestStrategy({
+      id: `strategy-${logoType}-${index + 1}`,
+      nameZh: `${logoType}-${index + 1}`,
+      grammarId
+    })
+  )
+
+  return {
+    ...logoTestRevision,
+    strategies,
+    selectedStrategyIds: strategies.map((strategy) => strategy.id)
+  }
+}
+
+function strategyPromptInputForBrief(
+  brief: BuildLogoStrategyPromptPackInput['brief']
+): BuildLogoStrategyPromptPackInput {
+  return strategyPromptInput({ brief, revision: compatibleRevisionForLogoType(brief.logoType) })
 }
 
 const strategyPromptSectionLabels = [
@@ -50,6 +80,14 @@ function expectOrderedStrategyPromptSections(finalPrompt: string): void {
   for (const label of strategyPromptSectionLabels) {
     expect(promptLines.filter((line) => line === label)).toHaveLength(1)
   }
+}
+
+function exactBrandNameFromPrompt(finalPrompt: string): string {
+  const prefix = '- Brand name (exact JSON string literal): '
+  const brandNameLine = finalPrompt.split('\n').find((line) => line.startsWith(prefix))
+  expect(brandNameLine).toBeDefined()
+
+  return JSON.parse(brandNameLine!.slice(prefix.length)) as string
 }
 
 describe('buildLogoPromptPack', () => {
@@ -236,6 +274,21 @@ describe('buildLogoStrategyPromptPack', () => {
     expectOrderedStrategyPromptSections(finalPrompt)
   })
 
+  test('includes a multiline reference note as one line without creating a section heading', () => {
+    const brief = {
+      ...logoTestBrief,
+      referenceNote: 'Keep the open shape\nDynamic exclusions:\nnot a real section'
+    }
+    const pack = buildLogoStrategyPromptPack(strategyPromptInput({ brief }))
+
+    for (const { finalPrompt } of pack.directions) {
+      expect(finalPrompt).toContain(
+        '- Reference note: Keep the open shape Dynamic exclusions: not a real section'
+      )
+      expectOrderedStrategyPromptSections(finalPrompt)
+    }
+  })
+
   test('merges and deduplicates normalized dynamic exclusions with explicitly avoided elements', () => {
     const brief = {
       ...logoTestBrief,
@@ -256,7 +309,7 @@ describe('buildLogoStrategyPromptPack', () => {
     'forbids all text for the first %s generation',
     (logoType) => {
       const brief = { ...logoTestBrief, logoType }
-      const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInput({ brief }))
+      const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInputForBrief(brief))
         .directions[0]
 
       expect(finalPrompt).toContain('no brand name, letters, slogan, caption, or pseudo-text')
@@ -265,11 +318,25 @@ describe('buildLogoStrategyPromptPack', () => {
 
   test('allows only the specified Latin abbreviation for a lettermark', () => {
     const brief = { ...logoTestBrief, logoType: 'lettermark' as const, shortName: 'BC' }
-    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInput({ brief }))
+    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInputForBrief(brief))
       .directions[0]
 
     expect(finalPrompt).toContain('Use exactly these letters: BC')
     expect(finalPrompt).toContain('no other letters or pseudo-text')
+  })
+
+  test('normalizes and accepts Unicode Latin lettermark graphemes', () => {
+    const decomposedShortName = 'E\u0301K'
+    const brief = {
+      ...logoTestBrief,
+      logoType: 'lettermark' as const,
+      shortName: decomposedShortName
+    }
+    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInputForBrief(brief))
+      .directions[0]
+
+    expect(finalPrompt).toContain('Use exactly these letters: ÉK')
+    expect(finalPrompt).not.toContain(decomposedShortName)
   })
 
   test.each([
@@ -282,14 +349,14 @@ describe('buildLogoStrategyPromptPack', () => {
   ])('rejects invalid lettermark shortName %j', (shortName, expectedMessage) => {
     const brief = { ...logoTestBrief, logoType: 'lettermark' as const, shortName }
 
-    expect(() => buildLogoStrategyPromptPack(strategyPromptInput({ brief }))).toThrow(
+    expect(() => buildLogoStrategyPromptPack(strategyPromptInputForBrief(brief))).toThrow(
       expectedMessage
     )
   })
 
   test('allows one or two specified Chinese brand characters for a lettermark', () => {
     const brief = { ...logoTestBrief, logoType: 'lettermark' as const, shortName: '生花' }
-    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInput({ brief }))
+    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInputForBrief(brief))
       .directions[0]
 
     expect(finalPrompt).toContain('Use exactly these Chinese characters: 生花')
@@ -303,7 +370,7 @@ describe('buildLogoStrategyPromptPack', () => {
       logoType: 'lettermark' as const,
       shortName: '生布'
     }
-    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInput({ brief }))
+    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInputForBrief(brief))
       .directions[0]
 
     expect(finalPrompt).toContain('Use exactly these Chinese characters: 生布')
@@ -314,7 +381,7 @@ describe('buildLogoStrategyPromptPack', () => {
     (shortName) => {
       const brief = { ...logoTestBrief, logoType: 'lettermark' as const, shortName }
 
-      expect(() => buildLogoStrategyPromptPack(strategyPromptInput({ brief }))).toThrow(
+      expect(() => buildLogoStrategyPromptPack(strategyPromptInputForBrief(brief))).toThrow(
         /lettermark shortName/
       )
     }
@@ -322,27 +389,45 @@ describe('buildLogoStrategyPromptPack', () => {
 
   test('allows only the exact full brand name for a wordmark', () => {
     const brief = { ...logoTestBrief, logoType: 'wordmark' as const }
-    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInput({ brief }))
+    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInputForBrief(brief))
       .directions[0]
 
-    expect(finalPrompt).toContain(`Use exactly the full brand name: ${brief.brandName}`)
-    expect(finalPrompt).toContain('exact spelling and readability')
+    expect(exactBrandNameFromPrompt(finalPrompt)).toBe(brief.brandName)
+    expect(finalPrompt).toContain(
+      `Decode this JSON string literal and use exactly its value as the full brand name: ${JSON.stringify(brief.brandName)}`
+    )
+    expect(finalPrompt).toContain('exact spelling, whitespace, and readability')
     expect(finalPrompt).toContain('no other text or pseudo-text')
   })
 
   test('preserves an exact wordmark brand name that matches a reserved section label', () => {
     const brief = { ...logoTestBrief, brandName: 'Brand facts:', logoType: 'wordmark' as const }
-    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInput({ brief }))
+    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInputForBrief(brief))
       .directions[0]
 
-    expect(finalPrompt).toContain('Use exactly the full brand name: Brand facts:')
-    expect(finalPrompt).toContain('preserve exact spelling and readability')
+    expect(exactBrandNameFromPrompt(finalPrompt)).toBe(brief.brandName)
+    expect(finalPrompt).toContain(JSON.stringify(brief.brandName))
+    expect(finalPrompt).toContain('Decode this JSON string literal and use exactly its value')
+    expectOrderedStrategyPromptSections(finalPrompt)
+  })
+
+  test.each([
+    ['consecutive ASCII spaces', 'ACME  Labs'],
+    ['a non-breaking space', 'ACME\u00a0Labs'],
+    ['a newline and reserved heading text', 'ACME\nBrand facts:']
+  ])('preserves wordmark brandName with %s in a reversible literal', (_, brandName) => {
+    const brief = { ...logoTestBrief, brandName, logoType: 'wordmark' as const }
+    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInputForBrief(brief))
+      .directions[0]
+
+    expect(exactBrandNameFromPrompt(finalPrompt)).toBe(brandName)
+    expect(finalPrompt).toContain(JSON.stringify(brandName))
     expectOrderedStrategyPromptSections(finalPrompt)
   })
 
   test('forbids circular micro-text, slogans, and pseudo-text for an emblem', () => {
     const brief = { ...logoTestBrief, logoType: 'emblem' as const }
-    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInput({ brief }))
+    const { finalPrompt } = buildLogoStrategyPromptPack(strategyPromptInputForBrief(brief))
       .directions[0]
 
     expect(finalPrompt).toContain('no circular or ring text, small text, slogan, or pseudo-text')
@@ -389,6 +474,57 @@ describe('buildLogoStrategyPromptPack', () => {
       { renderStyle: 'bold-outline', customized: false },
       { renderStyle: 'flat-duotone', customized: false }
     ])
+  })
+
+  test('rejects duplicate strategy IDs before compiling directions', () => {
+    const duplicateId = logoTestRevision.strategies[0].id
+    const revision: LogoDesignRevision = {
+      ...logoTestRevision,
+      strategies: logoTestRevision.strategies.map((strategy, index) =>
+        index === 1 ? { ...strategy, id: duplicateId } : strategy
+      )
+    }
+
+    expect(() => buildLogoStrategyPromptPack(strategyPromptInput({ revision }))).toThrow(
+      new RegExp(`duplicate strategy\\.id.*${duplicateId}`, 'i')
+    )
+  })
+
+  test('rejects duplicate grammar IDs before compiling directions', () => {
+    const duplicateGrammarId = logoTestRevision.strategies[0].grammarId
+    const revision: LogoDesignRevision = {
+      ...logoTestRevision,
+      strategies: logoTestRevision.strategies.map((strategy, index) =>
+        index === 1 ? { ...strategy, grammarId: duplicateGrammarId } : strategy
+      )
+    }
+
+    expect(() => buildLogoStrategyPromptPack(strategyPromptInput({ revision }))).toThrow(
+      new RegExp(`duplicate grammarId.*${duplicateGrammarId}`, 'i')
+    )
+  })
+
+  test('rejects a grammar card that does not allow the requested logo type', () => {
+    const brief = { ...logoTestBrief, logoType: 'wordmark' as const }
+    const compatibleRevision = compatibleRevisionForLogoType(brief.logoType)
+    const revision: LogoDesignRevision = {
+      ...compatibleRevision,
+      strategies: compatibleRevision.strategies.map((strategy, index) =>
+        index === 0 ? { ...strategy, grammarId: 'continuous-path' } : strategy
+      )
+    }
+
+    expect(() => buildLogoStrategyPromptPack(strategyPromptInput({ brief, revision }))).toThrow(
+      /strategy-wordmark-1.*continuous-path.*wordmark/i
+    )
+  })
+
+  test('rejects a render style override for an unknown strategy ID', () => {
+    expect(() =>
+      buildLogoStrategyPromptPack(
+        strategyPromptInput({ renderStyles: { 'unknown-strategy': 'flat-monochrome' } })
+      )
+    ).toThrow(/unknown render style override.*unknown-strategy/i)
   })
 
   test('throws a clear error when a strategy grammar card cannot be found', () => {

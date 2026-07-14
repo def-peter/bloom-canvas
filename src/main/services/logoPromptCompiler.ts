@@ -8,6 +8,8 @@ import type {
 import type {
   BuildLogoStrategyPromptPackInput,
   LogoBrandBriefV2,
+  LogoDesignStrategy,
+  LogoGrammarCard,
   LogoRenderStyle,
   LogoStrategyPromptPack
 } from '../../shared/logoDesign'
@@ -155,6 +157,13 @@ function formatPromptValue(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
 }
 
+function formatExactPromptValue(value: string): string {
+  const encodedValue = JSON.stringify(value)
+  if (encodedValue === undefined) throw new Error('Unable to encode exact prompt value')
+
+  return encodedValue
+}
+
 function dedupePromptValues(values: readonly string[]): string[] {
   const seen = new Set<string>()
 
@@ -174,7 +183,7 @@ function buildLogoTypeTextRules(brief: LogoBrandBriefV2): string {
     case 'combination-mark':
       return 'First generation is symbol-only: no brand name, letters, slogan, caption, or pseudo-text.'
     case 'wordmark':
-      return `Use exactly the full brand name: ${brief.brandName}; preserve exact spelling and readability; no other text or pseudo-text.`
+      return `Decode this JSON string literal and use exactly its value as the full brand name: ${formatExactPromptValue(brief.brandName)}; preserve exact spelling, whitespace, and readability; no other text or pseudo-text.`
     case 'emblem':
       return 'Keep the first emblem symbol-led with no circular or ring text, small text, slogan, or pseudo-text.'
     case 'lettermark':
@@ -189,14 +198,14 @@ function buildLettermarkTextRules(brief: LogoBrandBriefV2): string {
     )
   }
 
-  const shortName = brief.shortName.trim()
+  const shortName = brief.shortName.trim().normalize('NFC')
   if (!shortName) {
     throw new Error(
       'lettermark shortName is empty; provide 1-3 Latin letters or 1-2 Chinese characters from brandName'
     )
   }
 
-  if (/^[A-Za-z]{1,3}$/.test(shortName)) {
+  if (/^(?:\p{Script=Latin}\p{M}*){1,3}$/u.test(shortName)) {
     return `Use exactly these letters: ${shortName}; no other letters or pseudo-text; preserve exact letter identity and readability.`
   }
 
@@ -233,17 +242,43 @@ export function buildLogoStrategyPromptPack(
   }
 
   const normalizedBrief = normalizeLogoBrief(input.brief)
-  const textRules = buildLogoTypeTextRules(normalizedBrief.brief)
-  const dynamicExclusions = dedupePromptValues([
-    ...normalizedBrief.dynamicExclusions,
-    ...normalizedBrief.brief.avoidedElements
-  ])
+  const strategyIds = new Set<string>()
+  const grammarIds = new Set<string>()
+  for (const strategy of input.revision.strategies) {
+    if (strategyIds.has(strategy.id)) {
+      throw new Error(`Logo strategy prompt pack has duplicate strategy.id "${strategy.id}"`)
+    }
+    strategyIds.add(strategy.id)
 
-  const directions = input.revision.strategies.map((strategy) => {
+    if (grammarIds.has(strategy.grammarId)) {
+      throw new Error(`Logo strategy prompt pack has duplicate grammarId "${strategy.grammarId}"`)
+    }
+    grammarIds.add(strategy.grammarId)
+  }
+
+  const unknownRenderStyleKey = Object.keys(input.renderStyles ?? {}).find(
+    (strategyId) => !strategyIds.has(strategyId)
+  )
+  if (unknownRenderStyleKey) {
+    throw new Error(`Unknown render style override strategy ID "${unknownRenderStyleKey}"`)
+  }
+
+  const preparedStrategies: Array<{
+    strategy: LogoDesignStrategy
+    grammarCard: LogoGrammarCard
+    renderStyle: LogoRenderStyle
+    customized: boolean
+  }> = []
+  for (const strategy of input.revision.strategies) {
     const grammarCard = logoGrammarCards.find((card) => card.id === strategy.grammarId)
     if (!grammarCard) {
       throw new Error(
         `Logo strategy "${strategy.id}" references missing grammar card "${strategy.grammarId}"`
+      )
+    }
+    if (!grammarCard.allowedLogoTypes.includes(normalizedBrief.brief.logoType)) {
+      throw new Error(
+        `Logo strategy "${strategy.id}" grammarId "${strategy.grammarId}" does not allow logoType "${normalizedBrief.brief.logoType}"`
       )
     }
 
@@ -253,73 +288,91 @@ export function buildLogoStrategyPromptPack(
       throw new Error(`Logo strategy "${strategy.id}" has no default render style`)
     }
 
-    const finalPrompt = [
-      promptSectionLabels.brandFacts,
-      `- Brand name: ${formatPromptValue(normalizedBrief.brief.brandName)}`,
-      optionalPromptLine('Alternate name', normalizedBrief.brief.brandNameAlt),
-      `- Industry: ${formatPromptValue(normalizedBrief.brief.industry)}`,
-      `- Business description: ${formatPromptValue(normalizedBrief.brief.businessDescription)}`,
-      optionalPromptLine('Target audience', normalizedBrief.brief.targetAudience),
-      `- Brand keywords: ${formatValues(normalizedBrief.brief.brandKeywords)}`,
-      optionalPromptLine('Differentiator', normalizedBrief.brief.differentiator),
-      `- Preferred colors: ${formatValues(normalizedBrief.brief.preferredColors)}`,
-      `- Avoided colors: ${formatValues(normalizedBrief.brief.avoidedColors)}`,
-      `- Usage scenarios: ${formatValues(normalizedBrief.brief.usageScenarios)}`,
-      `- Functional truths: ${formatValues(input.revision.semantics.functionalTruths)}`,
-      `- Emotional qualities: ${formatValues(input.revision.semantics.emotionalQualities)}`,
-      `- Audience signals: ${formatValues(input.revision.semantics.audienceSignals)}`,
-      '',
-      promptSectionLabels.selectedStrategy,
-      `- Strategy: ${formatPromptValue(strategy.nameZh)} (${formatPromptValue(strategy.id)})`,
-      `- Summary: ${formatPromptValue(strategy.summaryZh)}`,
-      `- Brand evidence: ${formatValues(strategy.brandEvidence)}`,
-      `- Core metaphor: ${formatPromptValue(strategy.coreMetaphor)}`,
-      `- Construction: ${formatPromptValue(strategy.construction)}`,
-      `- Silhouette: ${formatPromptValue(strategy.silhouette)}`,
-      `- Composition: ${formatPromptValue(strategy.composition)}`,
-      `- Color plan: ${formatPromptValue(strategy.colorPlan)}`,
-      `- Image prompt: ${formatPromptValue(strategy.imagePromptEn)}`,
-      `- Strategy exclusions: ${formatValues(strategy.exclusions)}`,
-      `- Rationale: ${formatPromptValue(strategy.rationaleZh)}`,
-      '',
-      promptSectionLabels.grammarRules,
-      `- Grammar: ${grammarCard.nameZh} (${grammarCard.id})`,
-      `- Mechanism: ${grammarCard.mechanism}`,
-      ...grammarCard.constructionRules.map((rule) => `- ${rule}`),
-      ...grammarCard.promptFragments.map((fragment) => `- ${fragment}`),
-      '',
-      promptSectionLabels.renderStyle,
-      `- ${renderStyle}: ${renderStyleInstructions[renderStyle]}`,
-      '',
-      promptSectionLabels.textRules,
-      `- ${formatPromptValue(textRules)}`,
-      '',
-      promptSectionLabels.executionRequirements,
-      ...executionRequirements.map((requirement) => `- ${requirement}`),
-      '',
-      promptSectionLabels.dynamicExclusions,
-      `- Avoid: ${formatValues(dynamicExclusions)}`
-    ]
-      .filter((line): line is string => line !== null)
-      .join('\n')
-    if (finalPrompt.length > MAX_FINAL_PROMPT_LENGTH) {
-      throw new Error(
-        `Logo strategy "${strategy.id}" final prompt is ${finalPrompt.length} characters; maximum is ${MAX_FINAL_PROMPT_LENGTH}`
-      )
-    }
-
-    return {
-      strategyId: strategy.id,
-      strategyNameZh: strategy.nameZh,
-      grammarId: strategy.grammarId,
-      sourceBriefVersion: input.revision.briefVersion,
-      sourceStrategyVersion: strategy.version,
-      sourcePromptVersion: input.promptVersion,
+    preparedStrategies.push({
+      strategy,
+      grammarCard,
       renderStyle,
-      finalPrompt,
       customized: renderStyleOverride !== undefined
+    })
+  }
+
+  const textRules = buildLogoTypeTextRules(normalizedBrief.brief)
+  const dynamicExclusions = dedupePromptValues([
+    ...normalizedBrief.dynamicExclusions,
+    ...normalizedBrief.brief.avoidedElements
+  ])
+
+  const directions = preparedStrategies.map(
+    ({ strategy, grammarCard, renderStyle, customized }) => {
+      const finalPrompt = [
+        promptSectionLabels.brandFacts,
+        `- Brand name (exact JSON string literal): ${formatExactPromptValue(normalizedBrief.brief.brandName)}`,
+        optionalPromptLine('Alternate name', normalizedBrief.brief.brandNameAlt),
+        `- Industry: ${formatPromptValue(normalizedBrief.brief.industry)}`,
+        `- Business description: ${formatPromptValue(normalizedBrief.brief.businessDescription)}`,
+        optionalPromptLine('Target audience', normalizedBrief.brief.targetAudience),
+        `- Brand keywords: ${formatValues(normalizedBrief.brief.brandKeywords)}`,
+        optionalPromptLine('Differentiator', normalizedBrief.brief.differentiator),
+        `- Preferred colors: ${formatValues(normalizedBrief.brief.preferredColors)}`,
+        `- Avoided colors: ${formatValues(normalizedBrief.brief.avoidedColors)}`,
+        `- Usage scenarios: ${formatValues(normalizedBrief.brief.usageScenarios)}`,
+        optionalPromptLine('Reference note', normalizedBrief.brief.referenceNote),
+        `- Functional truths: ${formatValues(input.revision.semantics.functionalTruths)}`,
+        `- Emotional qualities: ${formatValues(input.revision.semantics.emotionalQualities)}`,
+        `- Audience signals: ${formatValues(input.revision.semantics.audienceSignals)}`,
+        '',
+        promptSectionLabels.selectedStrategy,
+        `- Strategy: ${formatPromptValue(strategy.nameZh)} (${formatPromptValue(strategy.id)})`,
+        `- Summary: ${formatPromptValue(strategy.summaryZh)}`,
+        `- Brand evidence: ${formatValues(strategy.brandEvidence)}`,
+        `- Core metaphor: ${formatPromptValue(strategy.coreMetaphor)}`,
+        `- Construction: ${formatPromptValue(strategy.construction)}`,
+        `- Silhouette: ${formatPromptValue(strategy.silhouette)}`,
+        `- Composition: ${formatPromptValue(strategy.composition)}`,
+        `- Color plan: ${formatPromptValue(strategy.colorPlan)}`,
+        `- Image prompt: ${formatPromptValue(strategy.imagePromptEn)}`,
+        `- Strategy exclusions: ${formatValues(strategy.exclusions)}`,
+        `- Rationale: ${formatPromptValue(strategy.rationaleZh)}`,
+        '',
+        promptSectionLabels.grammarRules,
+        `- Grammar: ${grammarCard.nameZh} (${grammarCard.id})`,
+        `- Mechanism: ${grammarCard.mechanism}`,
+        ...grammarCard.constructionRules.map((rule) => `- ${rule}`),
+        ...grammarCard.promptFragments.map((fragment) => `- ${fragment}`),
+        '',
+        promptSectionLabels.renderStyle,
+        `- ${renderStyle}: ${renderStyleInstructions[renderStyle]}`,
+        '',
+        promptSectionLabels.textRules,
+        `- ${textRules}`,
+        '',
+        promptSectionLabels.executionRequirements,
+        ...executionRequirements.map((requirement) => `- ${requirement}`),
+        '',
+        promptSectionLabels.dynamicExclusions,
+        `- Avoid: ${formatValues(dynamicExclusions)}`
+      ]
+        .filter((line): line is string => line !== null)
+        .join('\n')
+      if (finalPrompt.length > MAX_FINAL_PROMPT_LENGTH) {
+        throw new Error(
+          `Logo strategy "${strategy.id}" final prompt is ${finalPrompt.length} characters; maximum is ${MAX_FINAL_PROMPT_LENGTH}`
+        )
+      }
+
+      return {
+        strategyId: strategy.id,
+        strategyNameZh: strategy.nameZh,
+        grammarId: strategy.grammarId,
+        sourceBriefVersion: input.revision.briefVersion,
+        sourceStrategyVersion: strategy.version,
+        sourcePromptVersion: input.promptVersion,
+        renderStyle,
+        finalPrompt,
+        customized
+      }
     }
-  })
+  )
 
   return {
     sourceBriefVersion: input.revision.briefVersion,

@@ -99,10 +99,18 @@ function ImageSizeControlInner({
   const [uncontrolledMode, setUncontrolledMode] = useState<SizeMode>(() =>
     getValueMode(value, flexible)
   )
+  const [controlledCustomDraft, setControlledCustomDraft] = useState<GenerationSize | null>(null)
   const [width, setWidth] = useState<number | null>(initialDimensions.width)
   const [height, setHeight] = useState<number | null>(initialDimensions.height)
   const normalizedValueRef = useRef<GenerationSize | null>(null)
-  const mode = controlled ? getValueMode(value, flexible) : uncontrolledMode
+  const valueMode = getValueMode(value, flexible)
+  const controlledCustomSession =
+    controlled && controlledCustomDraft !== null && controlledCustomDraft === value
+  const mode = controlled
+    ? valueMode === 'custom' || controlledCustomSession
+      ? 'custom'
+      : valueMode
+    : uncontrolledMode
   const controlledDimensions =
     controlled && mode === 'custom' && value ? parseImageSize(value) : null
   const displayedWidth = controlledDimensions?.width ?? width
@@ -129,12 +137,19 @@ function ImageSizeControlInner({
   function selectMode(nextMode: string): void {
     if (nextMode !== 'custom') {
       const nextSize = nextMode as GenerationSize
-      if (!controlled) setUncontrolledMode(nextSize)
+      if (controlled) {
+        setControlledCustomDraft(null)
+      } else {
+        setUncontrolledMode(nextSize)
+      }
       onChange?.(nextSize)
       return
     }
 
-    if (controlled) return
+    if (controlled) {
+      setControlledCustomDraft(value ?? DEFAULT_SIZE)
+      return
+    }
 
     const dimensions = value && !isPresetSize(value) ? parseImageSize(value) : null
     setWidth(dimensions?.width ?? DEFAULT_DIMENSIONS.width)
@@ -150,6 +165,7 @@ function ImageSizeControlInner({
     }
     if (nextWidth !== null && displayedHeight !== null) {
       const nextSize = `${nextWidth}x${displayedHeight}` as const
+      if (controlled) setControlledCustomDraft(nextSize)
       onChange?.(nextSize)
     }
   }
@@ -162,6 +178,7 @@ function ImageSizeControlInner({
     }
     if (displayedWidth !== null && nextHeight !== null) {
       const nextSize = `${displayedWidth}x${nextHeight}` as const
+      if (controlled) setControlledCustomDraft(nextSize)
       onChange?.(nextSize)
     }
   }

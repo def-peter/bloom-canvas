@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import type { GenerationSize } from '../../../shared/types'
 import { ImageSizeControl } from './ImageSizeControl'
 
 function openSizeSelect(): void {
@@ -10,6 +12,11 @@ function selectedSizeContent(): HTMLElement {
   const content = screen.getByLabelText('图像尺寸').parentElement
   if (!content) throw new Error('Select content is missing')
   return content
+}
+
+function ControlledImageSize(): React.JSX.Element {
+  const [value, setValue] = useState<GenerationSize>('1024x1024')
+  return <ImageSizeControl imageModel="gpt-image-2" value={value} onChange={setValue} />
 }
 
 describe('ImageSizeControl', () => {
@@ -63,6 +70,22 @@ describe('ImageSizeControl', () => {
     expect(screen.getByText('1536 x 864')).toBeInTheDocument()
     expect(screen.queryByLabelText('自定义宽度')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('自定义高度')).not.toBeInTheDocument()
+  })
+
+  it('enters and keeps custom mode when the parent accepts controlled dimensions', () => {
+    render(<ControlledImageSize />)
+
+    openSizeSelect()
+    fireEvent.click(screen.getByText('自定义'))
+    expect(screen.getByLabelText('自定义宽度')).toHaveValue('1024')
+    expect(screen.getByLabelText('自定义高度')).toHaveValue('1024')
+
+    fireEvent.change(screen.getByLabelText('自定义宽度'), { target: { value: '1536' } })
+    fireEvent.change(screen.getByLabelText('自定义高度'), { target: { value: '864' } })
+
+    expect(selectedSizeContent()).toHaveTextContent('自定义')
+    expect(screen.getByLabelText('自定义宽度')).toHaveValue('1536')
+    expect(screen.getByLabelText('自定义高度')).toHaveValue('864')
   })
 
   it('keeps the controlled value when the parent rejects a preset change', () => {

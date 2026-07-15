@@ -184,33 +184,138 @@ export class GenerationService {
     )
     const removedVariantIds = new Set(removedVariants.map((variant) => variant.id))
     const removedAssetIds = new Set(removedVariants.map((variant) => variant.assetId))
-    const removedAssets = current.assets.filter(
-      (asset) => asset.type === 'output' && removedAssetIds.has(asset.id)
-    )
     const now = new Date().toISOString()
+    const nextGenerations = current.generations.filter((item) => item.id !== generationId)
+    const nextVariants = current.variants.filter((variant) => variant.generationId !== generationId)
+    const nextLogoProjects = current.logoProjects.map((project) => {
+      const favoriteVariantIds = project.favoriteVariantIds.filter(
+        (id) => !removedVariantIds.has(id)
+      )
+      const generationIds = project.generationIds.filter((id) => id !== generationId)
+      const changed =
+        favoriteVariantIds.length !== project.favoriteVariantIds.length ||
+        generationIds.length !== project.generationIds.length
+
+      return changed ? { ...project, favoriteVariantIds, generationIds, updatedAt: now } : project
+    })
+    const retainedAssetIds = this.collectRetainedAssetIds(
+      nextGenerations,
+      nextVariants,
+      nextLogoProjects
+    )
+    const deletedAssetIds = new Set(
+      [...removedAssetIds].filter((assetId) => !retainedAssetIds.has(assetId))
+    )
+    const removedAssets = current.assets.filter(
+      (asset) => asset.type === 'output' && deletedAssetIds.has(asset.id)
+    )
 
     await this.storage.write({
       ...current,
       assets: current.assets.filter(
-        (asset) => asset.type !== 'output' || !removedAssetIds.has(asset.id)
+        (asset) => asset.type !== 'output' || !deletedAssetIds.has(asset.id)
       ),
-      generations: current.generations.filter((item) => item.id !== generationId),
-      variants: current.variants.filter((variant) => variant.generationId !== generationId),
-      logoProjects: current.logoProjects.map((project) => {
-        const favoriteVariantIds = project.favoriteVariantIds.filter(
-          (id) => !removedVariantIds.has(id)
-        )
-        const generationIds = project.generationIds.filter((id) => id !== generationId)
-        const changed =
-          favoriteVariantIds.length !== project.favoriteVariantIds.length ||
-          generationIds.length !== project.generationIds.length
-
-        return changed ? { ...project, favoriteVariantIds, generationIds, updatedAt: now } : project
-      })
+      generations: nextGenerations,
+      variants: nextVariants,
+      logoProjects: nextLogoProjects
     })
 
+    await this.removeAssetFiles(removedAssets)
+  }
+
+  async removeVariants(variantIds: string[]): Promise<void> {
+    const requestedVariantIds = new Set(variantIds)
+    if (requestedVariantIds.size === 0) return
+
+    const current = await this.storage.read()
+    const removedVariants = current.variants.filter((variant) =>
+      requestedVariantIds.has(variant.id)
+    )
+    if (removedVariants.length !== requestedVariantIds.size) {
+      throw new Error('Variant not found')
+    }
+
+    const removedAssetIds = new Set(removedVariants.map((variant) => variant.assetId))
+    const affectedGenerationIds = new Set(
+      removedVariants.map((variant) => variant.generationId)
+    )
+    const nextVariants = current.variants.filter(
+      (variant) => !requestedVariantIds.has(variant.id)
+    )
+    const generationsWithUpdatedOutputs = current.generations.map((generation) =>
+      affectedGenerationIds.has(generation.id)
+        ? {
+            ...generation,
+            outputVariantIds: generation.outputVariantIds.filter(
+              (variantId) => !requestedVariantIds.has(variantId)
+            ),
+            updatedAt: new Date().toISOString()
+          }
+        : generation
+    )
+    const removedGenerationIds = new Set(
+      generationsWithUpdatedOutputs
+        .filter(
+          (generation) =>
+            affectedGenerationIds.has(generation.id) && generation.outputVariantIds.length === 0
+        )
+        .map((generation) => generation.id)
+    )
+    const nextGenerations = generationsWithUpdatedOutputs.filter(
+      (generation) => !removedGenerationIds.has(generation.id)
+    )
+    const now = new Date().toISOString()
+    const nextLogoProjects = current.logoProjects.map((project) => {
+      const favoriteVariantIds = project.favoriteVariantIds.filter(
+        (id) => !requestedVariantIds.has(id)
+      )
+      const generationIds = project.generationIds.filter((id) => !removedGenerationIds.has(id))
+      const changed =
+        favoriteVariantIds.length !== project.favoriteVariantIds.length ||
+        generationIds.length !== project.generationIds.length
+
+      return changed ? { ...project, favoriteVariantIds, generationIds, updatedAt: now } : project
+    })
+    const retainedAssetIds = this.collectRetainedAssetIds(
+      nextGenerations,
+      nextVariants,
+      nextLogoProjects
+    )
+    const deletedAssetIds = new Set(
+      [...removedAssetIds].filter((assetId) => !retainedAssetIds.has(assetId))
+    )
+    const removedAssets = current.assets.filter(
+      (asset) => asset.type === 'output' && deletedAssetIds.has(asset.id)
+    )
+
+    await this.storage.write({
+      ...current,
+      assets: current.assets.filter(
+        (asset) => asset.type !== 'output' || !deletedAssetIds.has(asset.id)
+      ),
+      generations: nextGenerations,
+      variants: nextVariants,
+      logoProjects: nextLogoProjects
+    })
+
+    await this.removeAssetFiles(removedAssets)
+  }
+
+  private collectRetainedAssetIds(
+    generations: Generation[],
+    variants: Variant[],
+    logoProjects: Array<{ referenceImageIds: string[] }>
+  ): Set<string> {
+    return new Set([
+      ...variants.map((variant) => variant.assetId),
+      ...generations.flatMap((generation) => generation.referenceImageIds),
+      ...logoProjects.flatMap((project) => project.referenceImageIds)
+    ])
+  }
+
+  private async removeAssetFiles(assets: Asset[]): Promise<void> {
     await Promise.all(
-      removedAssets.flatMap((asset) => [
+      assets.flatMap((asset) => [
         rm(asset.filePath, { force: true }),
         rm(asset.thumbnailPath, { force: true })
       ])

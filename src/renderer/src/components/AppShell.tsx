@@ -103,6 +103,17 @@ function WorkbenchShell(): React.JSX.Element {
     }
   }
 
+  async function handleDeleteVariants(variantIds: string[]): Promise<void> {
+    try {
+      await bloomCanvasClient.generations.removeVariants(variantIds)
+      await refresh()
+      message.success(`已删除 ${variantIds.length} 张图片`)
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : '批量删除图片失败')
+      throw deleteError
+    }
+  }
+
   function handleContinueEdit(asset: Asset): void {
     setDraftReferenceAssets([asset])
     setActiveScene('general')
@@ -172,6 +183,7 @@ function WorkbenchShell(): React.JSX.Element {
             generating={generating}
             generation={selectedGeneration}
             onContinueEdit={handleContinueEdit}
+            onDeleteVariants={handleDeleteVariants}
             onExport={handleExport}
             onRetry={handleRetry}
           />
@@ -200,6 +212,7 @@ function WorkbenchShell(): React.JSX.Element {
             selectedProjectId={selectedLogoProject?.id ?? null}
             onContinueEdit={handleContinueEdit}
             onDelete={handleDeleteGeneration}
+            onDeleteVariants={handleDeleteVariants}
             onExport={handleExport}
             onRetry={handleRetry}
           />

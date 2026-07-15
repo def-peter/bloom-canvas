@@ -71,6 +71,7 @@ describe('LogoResultsPanel', () => {
         selectedProjectId="project-1"
         onContinueEdit={vi.fn()}
         onDelete={vi.fn()}
+        onDeleteVariants={vi.fn()}
         onExport={vi.fn()}
         onRetry={vi.fn()}
       />
@@ -108,6 +109,7 @@ describe('LogoResultsPanel', () => {
         selectedProjectId="project-1"
         onContinueEdit={vi.fn()}
         onDelete={vi.fn()}
+        onDeleteVariants={vi.fn()}
         onExport={vi.fn()}
         onRetry={retry}
       />
@@ -144,6 +146,7 @@ describe('LogoResultsPanel', () => {
         selectedProjectId="project-1"
         onContinueEdit={vi.fn()}
         onDelete={onDelete}
+        onDeleteVariants={vi.fn()}
         onExport={vi.fn()}
         onRetry={vi.fn()}
       />
@@ -155,5 +158,52 @@ describe('LogoResultsPanel', () => {
     fireEvent.click(within(deleteDialog).getByRole('button', { name: /删\s*除/ }))
 
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith('generation-modern-minimal'))
+  })
+
+  test('selects all project images and confirms batch deletion', async () => {
+    const onDeleteVariants = vi.fn().mockResolvedValue(undefined)
+    const secondAsset = { ...logoAsset, id: 'asset-2' }
+
+    render(
+      <LogoResultsPanel
+        generating={false}
+        generations={[
+          logoRecord('modern-minimal', '现代极简', [
+            {
+              id: 'variant-1',
+              generationId: 'generation-modern-minimal',
+              assetId: logoAsset.id,
+              index: 0,
+              favorite: false,
+              createdAt: '2026-07-09T00:00:00.000Z',
+              asset: logoAsset
+            },
+            {
+              id: 'variant-2',
+              generationId: 'generation-modern-minimal',
+              assetId: secondAsset.id,
+              index: 1,
+              favorite: false,
+              createdAt: '2026-07-09T00:00:00.000Z',
+              asset: secondAsset
+            }
+          ])
+        ]}
+        selectedProjectId="project-1"
+        onContinueEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onDeleteVariants={onDeleteVariants}
+        onExport={vi.fn()}
+        onRetry={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '选择图片' }))
+    fireEvent.click(screen.getByRole('button', { name: '全选' }))
+    fireEvent.click(screen.getByRole('button', { name: '删除所选（2）' }))
+    const dialog = await screen.findByRole('dialog', { name: '删除所选图片？' })
+    fireEvent.click(within(dialog).getByRole('button', { name: '删除' }))
+
+    await waitFor(() => expect(onDeleteVariants).toHaveBeenCalledWith(['variant-1', 'variant-2']))
   })
 })

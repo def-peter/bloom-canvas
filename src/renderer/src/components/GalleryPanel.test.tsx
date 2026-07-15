@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { GenerationRecord } from '../../../shared/types'
 import { GalleryPanel } from './GalleryPanel'
@@ -61,6 +61,7 @@ describe('GalleryPanel', () => {
         generation={generation}
         generating={false}
         onContinueEdit={vi.fn()}
+        onDeleteVariants={vi.fn()}
         onExport={vi.fn()}
         onRetry={vi.fn()}
       />
@@ -78,6 +79,7 @@ describe('GalleryPanel', () => {
         generation={failedGeneration}
         generating={false}
         onContinueEdit={vi.fn()}
+        onDeleteVariants={vi.fn()}
         onExport={vi.fn()}
         onRetry={vi.fn()}
       />
@@ -86,5 +88,42 @@ describe('GalleryPanel', () => {
     expect(screen.getByText('生成失败')).toBeInTheDocument()
     expect(screen.getByText("Unknown parameter: 'tools[0].n'.")).toBeInTheDocument()
     expect(screen.queryByText(/unknown_parameter/)).not.toBeInTheDocument()
+  })
+
+  it('selects individual images and confirms batch deletion', async () => {
+    const onDeleteVariants = vi.fn().mockResolvedValue(undefined)
+    const generationWithTwoVariants: GenerationRecord = {
+      ...generation,
+      outputVariantIds: ['variant-1', 'variant-2'],
+      variants: [
+        generation.variants[0],
+        {
+          ...generation.variants[0],
+          id: 'variant-2',
+          assetId: 'asset-2',
+          index: 1,
+          asset: { ...generation.variants[0].asset, id: 'asset-2' }
+        }
+      ]
+    }
+
+    render(
+      <GalleryPanel
+        generation={generationWithTwoVariants}
+        generating={false}
+        onContinueEdit={vi.fn()}
+        onDeleteVariants={onDeleteVariants}
+        onExport={vi.fn()}
+        onRetry={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '选择图片' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: '选择图片 1' }))
+    fireEvent.click(screen.getByRole('button', { name: '删除所选（1）' }))
+    const dialog = await screen.findByRole('dialog', { name: '删除所选图片？' })
+    fireEvent.click(within(dialog).getByRole('button', { name: '删除' }))
+
+    await waitFor(() => expect(onDeleteVariants).toHaveBeenCalledWith(['variant-1']))
   })
 })

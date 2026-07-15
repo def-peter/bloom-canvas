@@ -3,25 +3,31 @@ node_modules/
 .npm/
 .pnpm-store/
 
-# Build and test output
+# Build, test, and package output
 dist/
 out/
 coverage/
 .nyc_output/
 *.lcov
 *.tsbuildinfo
+*.tgz
 
 # Local environment and runtime files
 .env
 .env.*
 !.env.example
+logs/
+pids/
 *.pid
 *.pid.lock
+*.seed
 report.*.*.*.*.json
 
 # Tool caches and isolated workspaces
 .cache/
 .vite/
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
 .worktrees/
 .eslintcache
 .DS_Store

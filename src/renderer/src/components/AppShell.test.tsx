@@ -83,6 +83,13 @@ const logoProject: LogoProject = {
   updatedAt: '2026-07-09T00:00:00.000Z'
 }
 
+const projectReferenceAsset = {
+  ...generatedRecordWithVariant.variants[0].asset,
+  id: 'project-reference-1',
+  type: 'reference' as const,
+  sourceGenerationId: undefined
+}
+
 const logoGeneratedRecordWithVariant: GenerationRecord = {
   ...generatedRecordWithVariant,
   id: 'logo-generation-1',
@@ -149,7 +156,8 @@ function installBloomCanvasApi(overrides: Partial<BloomCanvasApi> = {}): BloomCa
     assets: {
       getPathForFile: vi.fn(),
       import: vi.fn(),
-      export: vi.fn()
+      export: vi.fn(),
+      getMany: vi.fn().mockResolvedValue({ ok: true, data: [] })
     },
     generations: {
       create: vi.fn(),
@@ -307,6 +315,57 @@ describe('AppShell', () => {
     expect(screen.getByRole('img', { name: '参考图 1' })).toHaveAttribute(
       'src',
       'bloom-canvas://thumbnail/logo-asset-1'
+    )
+  })
+
+  it('does not leak a general draft reference into logo design', async () => {
+    installBloomCanvasApi({
+      generations: {
+        create: vi.fn(),
+        list: vi.fn().mockResolvedValue({ ok: true, data: [generatedRecordWithVariant] }),
+        remove: vi.fn(),
+        removeVariants: vi.fn(),
+        favorite: vi.fn(),
+        retry: vi.fn()
+      }
+    })
+
+    render(<AppShell />)
+
+    fireEvent.click(await screen.findByRole('button', { name: '继续修改' }))
+    expect(screen.getByText('参考图 1 张')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Logo 设计'))
+
+    expect(screen.queryByText('参考图 1 张')).not.toBeInTheDocument()
+  })
+
+  it('restores the selected logo project reference assets', async () => {
+    const projectWithReference = {
+      ...logoProject,
+      generationIds: [],
+      referenceImageIds: [projectReferenceAsset.id]
+    }
+    installBloomCanvasApi({
+      assets: {
+        getPathForFile: vi.fn(),
+        import: vi.fn(),
+        export: vi.fn(),
+        getMany: vi.fn().mockResolvedValue({ ok: true, data: [projectReferenceAsset] })
+      },
+      logoProjects: {
+        list: vi.fn().mockResolvedValue({ ok: true, data: [projectWithReference] }),
+        save: vi.fn(),
+        get: vi.fn(),
+        remove: vi.fn()
+      }
+    })
+
+    render(<AppShell />)
+    fireEvent.click(await screen.findByText('Logo 设计'))
+
+    expect(await screen.findByRole('img', { name: '参考图 1' })).toHaveAttribute(
+      'src',
+      'bloom-canvas://thumbnail/project-reference-1'
     )
   })
 

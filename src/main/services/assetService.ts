@@ -25,6 +25,13 @@ export class AssetService {
     return this.saveAssetFromFile('reference', filePath)
   }
 
+  async getMany(assetIds: AssetId[]): Promise<Asset[]> {
+    const state = await this.storage.read()
+    return assetIds
+      .map((assetId) => state.assets.find((asset) => asset.id === assetId))
+      .filter((asset): asset is Asset => Boolean(asset))
+  }
+
   async saveOutputFromBuffer(
     buffer: Buffer,
     extension: '.png' | '.jpg' | '.jpeg' | '.webp',

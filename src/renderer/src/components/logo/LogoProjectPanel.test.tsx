@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
 import type { LogoProject } from '../../../../shared/types'
 import { LogoProjectPanel } from './LogoProjectPanel'
@@ -28,7 +28,9 @@ describe('LogoProjectPanel', () => {
       <LogoProjectPanel
         projects={[project]}
         selectedId={null}
+        selectedProjectHasImages={false}
         onCreateNew={vi.fn()}
+        onDelete={vi.fn()}
         onSelect={onSelect}
       />
     )
@@ -37,5 +39,40 @@ describe('LogoProjectPanel', () => {
 
     expect(screen.getByText('AI 绘图软件')).toBeInTheDocument()
     expect(onSelect).toHaveBeenCalledWith(project)
+  })
+
+  test('confirms deletion for the selected empty project', async () => {
+    const onDelete = vi.fn().mockResolvedValue(undefined)
+    render(
+      <LogoProjectPanel
+        projects={[project]}
+        selectedId={project.id}
+        selectedProjectHasImages={false}
+        onCreateNew={vi.fn()}
+        onDelete={onDelete}
+        onSelect={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '删除项目' }))
+    const dialog = await screen.findByRole('dialog', { name: '删除 Logo 项目？' })
+    fireEvent.click(within(dialog).getByRole('button', { name: /删\s*除/ }))
+
+    await waitFor(() => expect(onDelete).toHaveBeenCalledWith(project.id))
+  })
+
+  test('disables project deletion while images remain', () => {
+    render(
+      <LogoProjectPanel
+        projects={[project]}
+        selectedId={project.id}
+        selectedProjectHasImages
+        onCreateNew={vi.fn()}
+        onDelete={vi.fn()}
+        onSelect={vi.fn()}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: '删除项目' })).toBeDisabled()
   })
 })

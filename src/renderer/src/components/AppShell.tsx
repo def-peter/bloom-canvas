@@ -9,7 +9,7 @@ import {
   Spin,
   Typography
 } from 'antd'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { bloomCanvasClient } from '../api/bloomCanvasClient'
 import { useWorkbenchStore } from '../state/workbenchStore'
 import { bloomTheme } from '../theme'
@@ -49,7 +49,29 @@ function WorkbenchShell(): React.JSX.Element {
   } = useWorkbenchStore()
   const { message } = AntdApp.useApp()
   const [providerModalOpen, setProviderModalOpen] = useState(false)
-  const [draftReferenceAssets, setDraftReferenceAssets] = useState<Asset[]>([])
+  const [generalReferenceAssets, setGeneralReferenceAssets] = useState<Asset[]>([])
+  const [logoReferenceAssets, setLogoReferenceAssets] = useState<Asset[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    const referenceImageIds = selectedLogoProject?.referenceImageIds ?? []
+
+    void bloomCanvasClient.assets
+      .getMany(referenceImageIds)
+      .then((assets) => {
+        if (!cancelled) setLogoReferenceAssets(assets)
+      })
+      .catch((assetError) => {
+        if (!cancelled) {
+          setLogoReferenceAssets([])
+          setError(assetError instanceof Error ? assetError.message : '加载 Logo 参考图失败')
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedLogoProject?.id, selectedLogoProject?.referenceImageIds, setError])
 
   async function handleProviderChange(providerId: string): Promise<void> {
     try {
@@ -115,7 +137,7 @@ function WorkbenchShell(): React.JSX.Element {
   }
 
   function handleContinueEdit(asset: Asset): void {
-    setDraftReferenceAssets([asset])
+    setGeneralReferenceAssets([asset])
     setActiveScene('general')
     setError(null)
     message.info('已把图片加入参考图，请在提示词里输入修改要求')
@@ -132,6 +154,25 @@ function WorkbenchShell(): React.JSX.Element {
     await refreshLogoProjects()
     selectLogoProject(project)
   }
+
+  async function handleDeleteLogoProject(projectId: string): Promise<void> {
+    try {
+      await bloomCanvasClient.logoProjects.remove(projectId)
+      await refresh()
+      message.success('已删除 Logo 项目')
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : '删除 Logo 项目失败')
+      throw deleteError
+    }
+  }
+
+  const selectedLogoProjectHasImages = Boolean(
+    selectedLogoProject &&
+    generations.some(
+      (generation) =>
+        generation.projectId === selectedLogoProject.id && generation.variants.length > 0
+    )
+  )
 
   return (
     <Layout className="app-shell">
@@ -189,13 +230,13 @@ function WorkbenchShell(): React.JSX.Element {
           />
           <CreationPanel
             activeProvider={activeProvider}
-            referenceAssets={draftReferenceAssets}
+            referenceAssets={generalReferenceAssets}
             settings={settings}
             onCreated={handleGenerationCreated}
             onError={setError}
             onGeneratingChange={setGenerating}
             onNeedProvider={() => setProviderModalOpen(true)}
-            onReferenceAssetsChange={setDraftReferenceAssets}
+            onReferenceAssetsChange={setGeneralReferenceAssets}
           />
         </div>
       ) : (
@@ -203,7 +244,12 @@ function WorkbenchShell(): React.JSX.Element {
           <LogoProjectPanel
             projects={logoProjects}
             selectedId={selectedLogoProject?.id ?? null}
-            onCreateNew={() => selectLogoProject(null)}
+            selectedProjectHasImages={selectedLogoProjectHasImages}
+            onCreateNew={() => {
+              selectLogoProject(null)
+              setLogoReferenceAssets([])
+            }}
+            onDelete={handleDeleteLogoProject}
             onSelect={selectLogoProject}
           />
           <LogoResultsPanel
@@ -219,14 +265,14 @@ function WorkbenchShell(): React.JSX.Element {
           <LogoCreationPanel
             activeProvider={activeProvider}
             project={selectedLogoProject}
-            referenceAssets={draftReferenceAssets}
+            referenceAssets={logoReferenceAssets}
             settings={settings}
             onCreated={handleGenerationCreated}
             onError={setError}
             onGeneratingChange={setGenerating}
             onNeedProvider={() => setProviderModalOpen(true)}
             onProjectSaved={handleLogoProjectSaved}
-            onReferenceAssetsChange={setDraftReferenceAssets}
+            onReferenceAssetsChange={setLogoReferenceAssets}
           />
         </div>
       )}

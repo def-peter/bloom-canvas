@@ -1,8 +1,14 @@
-import { DeleteOutlined, FileImageOutlined, QuestionCircleOutlined } from '@ant-design/icons'
+import {
+  CloseOutlined,
+  DeleteOutlined,
+  FileImageOutlined,
+  QuestionCircleOutlined
+} from '@ant-design/icons'
 import {
   Button,
   Checkbox,
   Form,
+  Image,
   Input,
   InputNumber,
   Radio,
@@ -12,6 +18,7 @@ import {
   Typography
 } from 'antd'
 import { useEffect, useState } from 'react'
+import { assetProtocolUrl, thumbnailProtocolUrl } from '../../../../shared/assetProtocol'
 import { getImageSizeModelError } from '../../../../shared/imageSize'
 import type {
   AppSettings,
@@ -189,6 +196,10 @@ export function LogoCreationPanel({
     const nextValues = createInitialValues(project, settings)
     form.setFieldsValue(nextValues)
   }, [form, project, settings])
+
+  function removeReferenceAsset(assetId: string): void {
+    onReferenceAssetsChange(referenceAssets.filter((asset) => asset.id !== assetId))
+  }
 
   async function buildPromptPackFromValues(
     values: LogoCreationFormValues
@@ -378,10 +389,31 @@ export function LogoCreationPanel({
         </Form.Item>
         {referenceAssets.length > 0 ? (
           <div className="reference-summary">
-            <Typography.Text strong>参考图 {referenceAssets.length} 张</Typography.Text>
-            <Button size="small" type="link" onClick={() => onReferenceAssetsChange([])}>
-              清空参考图
-            </Button>
+            <div className="reference-summary-header">
+              <Typography.Text strong>参考图 {referenceAssets.length} 张</Typography.Text>
+              <Button size="small" type="link" onClick={() => onReferenceAssetsChange([])}>
+                清空参考图
+              </Button>
+            </div>
+            <div className="reference-preview-grid">
+              {referenceAssets.map((asset, index) => (
+                <div className="reference-preview-item" key={asset.id}>
+                  <Image
+                    alt={`参考图 ${index + 1}`}
+                    preview={{ src: assetProtocolUrl(asset.id) }}
+                    src={thumbnailProtocolUrl(asset.id)}
+                  />
+                  <Button
+                    aria-label={`移除参考图 ${index + 1}`}
+                    className="reference-remove-button"
+                    icon={<CloseOutlined />}
+                    shape="circle"
+                    size="small"
+                    onClick={() => removeReferenceAsset(asset.id)}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         ) : null}
 

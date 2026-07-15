@@ -108,6 +108,15 @@ export function registerIpcHandlers(): void {
     }
   })
 
+  ipcMain.handle(IPC_CHANNELS.assetGetMany, async (_event, assetIds: unknown) => {
+    try {
+      const parsed = z.array(z.string().min(1)).max(100).parse(assetIds)
+      return ok(await assets.getMany(parsed))
+    } catch (error) {
+      return err(toErrorPayload(error))
+    }
+  })
+
   ipcMain.handle(IPC_CHANNELS.generationList, async () => ok(await generations.list()))
 
   ipcMain.handle(IPC_CHANNELS.generationCreate, async (_event, input) => {

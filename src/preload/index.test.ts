@@ -45,4 +45,16 @@ describe('preload bridge', () => {
       'remove: (id) => ipcRenderer.invoke(IPC_CHANNELS.logoProjectRemove, id)'
     )
   })
+
+  it('exposes asset lookup for restoring project references', async () => {
+    const [ipcSource, preloadSource] = await Promise.all([
+      readFile(join(process.cwd(), 'src/shared/ipc.ts'), 'utf8'),
+      readFile(join(process.cwd(), 'src/preload/index.ts'), 'utf8')
+    ])
+
+    expect(ipcSource).toContain("assetGetMany: 'asset:getMany'")
+    expect(preloadSource).toContain(
+      'getMany: (assetIds) => ipcRenderer.invoke(IPC_CHANNELS.assetGetMany, assetIds)'
+    )
+  })
 })

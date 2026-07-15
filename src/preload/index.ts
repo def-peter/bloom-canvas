@@ -14,7 +14,8 @@ const bloomCanvasApi: BloomCanvasApi = {
   assets: {
     getPathForFile: (file) => webUtils.getPathForFile(file as File),
     import: (input) => ipcRenderer.invoke(IPC_CHANNELS.assetImport, input),
-    export: (input) => ipcRenderer.invoke(IPC_CHANNELS.assetExport, input)
+    export: (input) => ipcRenderer.invoke(IPC_CHANNELS.assetExport, input),
+    getMany: (assetIds) => ipcRenderer.invoke(IPC_CHANNELS.assetGetMany, assetIds)
   },
   generations: {
     create: (input) => ipcRenderer.invoke(IPC_CHANNELS.generationCreate, input),

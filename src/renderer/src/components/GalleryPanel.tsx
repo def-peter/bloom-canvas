@@ -107,7 +107,7 @@ export function GalleryPanel({
         <Alert
           showIcon
           description="这条记录没有生成图片。可以调整 Provider 设置后重新生成。"
-          message={summarizeGenerationError(generation.errorMessage)}
+          title={summarizeGenerationError(generation.errorMessage)}
           type="error"
         />
       </main>

@@ -30,6 +30,7 @@ export const IPC_CHANNELS = {
   settingsSave: 'settings:save',
   assetImport: 'asset:import',
   assetExport: 'asset:export',
+  assetGetMany: 'asset:getMany',
   generationCreate: 'generation:create',
   generationList: 'generation:list',
   generationFavorite: 'generation:favorite',
@@ -60,6 +61,7 @@ export interface BloomCanvasApi {
     getPathForFile: (file: unknown) => string
     import: (input: ImportAssetInput) => Promise<AppResult<Asset>>
     export: (input: ExportAssetInput) => Promise<AppResult<string>>
+    getMany: (assetIds: string[]) => Promise<AppResult<Asset[]>>
   }
   generations: {
     create: (input: CreateGenerationInput) => Promise<AppResult<GenerationRecord>>

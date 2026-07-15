@@ -46,7 +46,8 @@ export const bloomCanvasClient = {
     import: (input: Parameters<typeof window.bloomCanvas.assets.import>[0]) =>
       unwrapResult(window.bloomCanvas.assets.import(input)),
     export: (input: Parameters<typeof window.bloomCanvas.assets.export>[0]) =>
-      unwrapResult(window.bloomCanvas.assets.export(input))
+      unwrapResult(window.bloomCanvas.assets.export(input)),
+    getMany: (assetIds: string[]) => unwrapResult(window.bloomCanvas.assets.getMany(assetIds))
   },
   generations: {
     create: (input: Parameters<typeof window.bloomCanvas.generations.create>[0]) =>

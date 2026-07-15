@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { App } from 'antd'
 import type { ComponentProps } from 'react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
-import type { GenerationRecord, LogoProject, ProviderConfig } from '../../../../shared/types'
+import type { Asset, GenerationRecord, LogoProject, ProviderConfig } from '../../../../shared/types'
 import { bloomCanvasClient } from '../../api/bloomCanvasClient'
 import { LogoCreationPanel } from './LogoCreationPanel'
 
@@ -82,6 +82,19 @@ const failedLogoRecord: GenerationRecord = {
   updatedAt: '2026-07-09T00:00:00.000Z',
   references: [],
   variants: []
+}
+
+const referenceAsset: Asset = {
+  id: 'reference-1',
+  type: 'reference',
+  filePath: '/tmp/reference.png',
+  thumbnailPath: '/tmp/reference-thumb.webp',
+  mimeType: 'image/png',
+  width: 1024,
+  height: 1024,
+  size: 100,
+  sha256: 'reference-hash',
+  createdAt: '2026-07-09T00:00:00.000Z'
 }
 
 function renderPanel(overrides?: Partial<ComponentProps<typeof LogoCreationPanel>>): void {
@@ -188,5 +201,17 @@ describe('LogoCreationPanel', () => {
 
     await waitFor(() => expect(onError).toHaveBeenCalledWith(failedLogoRecord.errorMessage))
     expect(onCreated).not.toHaveBeenCalled()
+  })
+
+  test('shows previewable reference thumbnails and removes one reference', async () => {
+    const onReferenceAssetsChange = vi.fn()
+    renderPanel({ referenceAssets: [referenceAsset], onReferenceAssetsChange })
+
+    const thumbnail = screen.getByRole('img', { name: '参考图 1' })
+    expect(thumbnail).toHaveAttribute('src', 'bloom-canvas://thumbnail/reference-1')
+    expect(thumbnail.closest('[role="button"]')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '移除参考图 1' }))
+    expect(onReferenceAssetsChange).toHaveBeenCalledWith([])
   })
 })

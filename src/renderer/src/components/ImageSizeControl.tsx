@@ -9,6 +9,9 @@ import {
 import type { GenerationSize } from '../../../shared/types'
 
 export interface ImageSizeControlProps {
+  'aria-describedby'?: string
+  'aria-invalid'?: React.AriaAttributes['aria-invalid']
+  id?: string
   imageModel?: string
   value?: GenerationSize
   onChange?: (value: GenerationSize) => void
@@ -17,8 +20,11 @@ export interface ImageSizeControlProps {
 type SizeMode = GenerationSize | 'custom'
 
 interface ImageSizeControlInnerProps {
+  'aria-describedby'?: string
+  'aria-invalid'?: React.AriaAttributes['aria-invalid']
   controlled: boolean
   flexible: boolean
+  id?: string
   value?: GenerationSize
   onChange?: (value: GenerationSize) => void
 }
@@ -69,6 +75,9 @@ function toNumber(value: number | string | null): number | null {
 }
 
 export function ImageSizeControl({
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  id,
   imageModel,
   value,
   onChange
@@ -85,8 +94,11 @@ export function ImageSizeControl({
 
   return (
     <ImageSizeControlInner
+      aria-describedby={ariaDescribedBy}
+      aria-invalid={ariaInvalid}
       controlled={controlled}
       flexible={flexible}
+      id={id}
       key={flexible ? 'flexible' : 'standard'}
       value={currentValue}
       onChange={changeValue}
@@ -95,8 +107,11 @@ export function ImageSizeControl({
 }
 
 function ImageSizeControlInner({
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
   controlled,
   flexible,
+  id,
   value,
   onChange
 }: ImageSizeControlInnerProps): React.JSX.Element {
@@ -209,7 +224,10 @@ function ImageSizeControlInner({
   return (
     <div className="image-size-control">
       <Select
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
         aria-label="图像尺寸"
+        id={id}
         options={flexible ? FLEXIBLE_OPTIONS : STANDARD_OPTIONS}
         value={mode}
         onChange={selectMode}

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { Button, Form } from 'antd'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import type { GenerationSize } from '../../../shared/types'
@@ -26,6 +27,51 @@ function ControlledImageSize(): React.JSX.Element {
 }
 
 describe('ImageSizeControl', () => {
+  it('preserves the Form.Item label association', () => {
+    render(
+      <Form initialValues={{ size: '1024x1024' }}>
+        <Form.Item label="尺寸" name="size">
+          <ImageSizeControl imageModel="gpt-image-2" />
+        </Form.Item>
+      </Form>
+    )
+
+    const label = screen.getByText('尺寸')
+    const sizeSelect = screen.getByLabelText('图像尺寸')
+
+    expect(sizeSelect).toHaveAttribute('id', label.getAttribute('for'))
+  })
+
+  it('preserves Form.Item validation error associations', async () => {
+    render(
+      <Form initialValues={{ size: '1024x1024' }}>
+        <Form.Item
+          label="尺寸"
+          name="size"
+          rules={[
+            {
+              validator: async () => {
+                throw new Error('尺寸错误')
+              }
+            }
+          ]}
+        >
+          <ImageSizeControl imageModel="gpt-image-2" />
+        </Form.Item>
+        <Button htmlType="submit">提交</Button>
+      </Form>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /提\s*交/ }))
+
+    await waitFor(() => expect(screen.getByText('尺寸错误')).toBeInTheDocument())
+    const sizeSelect = screen.getByLabelText('图像尺寸')
+    const describedBy = sizeSelect.getAttribute('aria-describedby')
+    expect(sizeSelect).toHaveAttribute('aria-invalid', 'true')
+    expect(describedBy).not.toBeNull()
+    expect(document.getElementById(describedBy!)).toHaveTextContent('尺寸错误')
+  })
+
   it('shows flexible presets and custom fields for gpt-image-2 models', () => {
     render(<ImageSizeControl imageModel="gpt-image-2-2026-07-15" />)
 

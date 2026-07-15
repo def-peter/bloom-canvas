@@ -17,7 +17,11 @@ export class OpenAIResponsesClient {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ model: provider.promptModel, input })
+      body: JSON.stringify({
+        model: provider.promptModel,
+        reasoning: { effort: 'high' },
+        input
+      })
     })
 
     if (!response.ok) {

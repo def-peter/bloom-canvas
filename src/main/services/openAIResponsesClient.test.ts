@@ -37,7 +37,11 @@ describe('OpenAIResponsesClient', () => {
         Authorization: 'Bearer sk-test',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ model: logoTestProvider.promptModel, input })
+      body: JSON.stringify({
+        model: logoTestProvider.promptModel,
+        reasoning: { effort: 'high' },
+        input
+      })
     })
   })
 

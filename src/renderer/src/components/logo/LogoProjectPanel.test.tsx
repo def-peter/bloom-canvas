@@ -27,6 +27,7 @@ describe('LogoProjectPanel', () => {
     render(
       <LogoProjectPanel
         projects={[project]}
+        generating={false}
         selectedId={null}
         selectedProjectHasImages={false}
         onCreateNew={vi.fn()}
@@ -46,6 +47,7 @@ describe('LogoProjectPanel', () => {
     render(
       <LogoProjectPanel
         projects={[project]}
+        generating={false}
         selectedId={project.id}
         selectedProjectHasImages={false}
         onCreateNew={vi.fn()}
@@ -65,8 +67,25 @@ describe('LogoProjectPanel', () => {
     render(
       <LogoProjectPanel
         projects={[project]}
+        generating={false}
         selectedId={project.id}
         selectedProjectHasImages
+        onCreateNew={vi.fn()}
+        onDelete={vi.fn()}
+        onSelect={vi.fn()}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: '删除项目' })).toBeDisabled()
+  })
+
+  test('disables project deletion while a generation is running', () => {
+    render(
+      <LogoProjectPanel
+        generating
+        projects={[project]}
+        selectedId={project.id}
+        selectedProjectHasImages={false}
         onCreateNew={vi.fn()}
         onDelete={vi.fn()}
         onSelect={vi.fn()}

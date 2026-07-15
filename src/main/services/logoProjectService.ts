@@ -66,27 +66,31 @@ export class LogoProjectService {
   }
 
   async remove(id: LogoProjectId): Promise<void> {
-    const state = await this.storage.read()
-    const project = state.logoProjects.find((item) => item.id === id)
-    if (!project) throw new Error('Logo project not found')
+    await this.storage.update((state) => {
+      const project = state.logoProjects.find((item) => item.id === id)
+      if (!project) throw new Error('Logo project not found')
 
-    const projectGenerationIds = new Set([
-      ...project.generationIds,
-      ...state.generations
-        .filter((generation) => generation.projectId === id)
-        .map((generation) => generation.id)
-    ])
-    const hasImages = state.variants.some((variant) =>
-      projectGenerationIds.has(variant.generationId)
-    )
-    if (hasImages) throw new Error('Logo project still has images')
+      const projectGenerations = state.generations.filter(
+        (generation) => generation.projectId === id
+      )
+      if (
+        projectGenerations.some((generation) => ['pending', 'running'].includes(generation.status))
+      ) {
+        throw new Error('Logo project generation is running')
+      }
+      const projectGenerationIds = new Set(projectGenerations.map((generation) => generation.id))
+      const hasImages = state.variants.some((variant) =>
+        projectGenerationIds.has(variant.generationId)
+      )
+      if (hasImages) throw new Error('Logo project still has images')
 
-    await this.storage.write({
-      ...state,
-      generations: state.generations.filter(
-        (generation) => !projectGenerationIds.has(generation.id)
-      ),
-      logoProjects: state.logoProjects.filter((item) => item.id !== id)
+      return {
+        ...state,
+        generations: state.generations.filter(
+          (generation) => !projectGenerationIds.has(generation.id)
+        ),
+        logoProjects: state.logoProjects.filter((item) => item.id !== id)
+      }
     })
   }
 

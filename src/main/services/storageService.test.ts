@@ -119,4 +119,34 @@ describe('StorageService', () => {
       providers: []
     })
   })
+
+  it('serializes concurrent updates so later mutations keep earlier changes', async () => {
+    tempRoot = await mkdtemp(join(tmpdir(), 'bloom-canvas-storage-'))
+    const storage = new StorageService(createPaths(tempRoot))
+    let releaseFirst!: () => void
+    let markFirstStarted!: () => void
+    const firstStarted = new Promise<void>((resolve) => {
+      markFirstStarted = resolve
+    })
+    const firstCanFinish = new Promise<void>((resolve) => {
+      releaseFirst = resolve
+    })
+
+    const firstUpdate = storage.update(async (state) => {
+      markFirstStarted()
+      await firstCanFinish
+      return { ...state, settings: { ...state.settings, defaultCount: 2 } }
+    })
+    await firstStarted
+    const secondUpdate = storage.update((state) => ({
+      ...state,
+      settings: { ...state.settings, theme: 'dark' }
+    }))
+    releaseFirst()
+    await Promise.all([firstUpdate, secondUpdate])
+
+    const state = await storage.read()
+    expect(state.settings.defaultCount).toBe(2)
+    expect(state.settings.theme).toBe('dark')
+  })
 })

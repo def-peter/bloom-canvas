@@ -243,6 +243,7 @@ function WorkbenchShell(): React.JSX.Element {
       ) : (
         <div className="workspace-grid logo-workspace-grid">
           <LogoProjectPanel
+            generating={generating}
             projects={logoProjects}
             selectedId={selectedLogoProject?.id ?? null}
             selectedProjectHasImages={selectedLogoProjectHasImages}

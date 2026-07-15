@@ -206,4 +206,34 @@ describe('LogoResultsPanel', () => {
 
     await waitFor(() => expect(onDeleteVariants).toHaveBeenCalledWith(['variant-1', 'variant-2']))
   })
+
+  test('disables result deletion controls while generating', () => {
+    render(
+      <LogoResultsPanel
+        generating
+        generations={[
+          logoRecord('modern-minimal', '现代极简', [
+            {
+              id: 'variant-1',
+              generationId: 'generation-modern-minimal',
+              assetId: logoAsset.id,
+              index: 0,
+              favorite: false,
+              createdAt: '2026-07-09T00:00:00.000Z',
+              asset: logoAsset
+            }
+          ])
+        ]}
+        selectedProjectId="project-1"
+        onContinueEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onDeleteVariants={vi.fn()}
+        onExport={vi.fn()}
+        onRetry={vi.fn()}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: '选择图片' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /删\s*除/ })).toBeDisabled()
+  })
 })

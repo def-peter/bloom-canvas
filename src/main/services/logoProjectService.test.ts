@@ -556,4 +556,77 @@ describe('LogoProjectService', () => {
     const state = await storage.read()
     expect(state.logoProjects.map((item) => item.id)).toEqual([project.id])
   })
+
+  test('rejects removal while the project has a running generation', async () => {
+    const project = legacyProject({ generationIds: ['generation-1'] })
+    await seedProject(project)
+    await storage.update((state) => ({
+      ...state,
+      generations: [
+        {
+          id: 'generation-1',
+          mode: 'text-to-image',
+          scenario: 'logo-design',
+          projectId: project.id,
+          promptOriginal: 'logo prompt',
+          promptFinal: 'logo prompt',
+          referenceImageIds: [],
+          parameters: {
+            size: '1024x1024',
+            count: 1,
+            quality: 'standard',
+            outputFormat: 'png'
+          },
+          outputVariantIds: [],
+          providerId: 'provider-1',
+          status: 'running',
+          favorite: false,
+          createdAt: '2026-07-09T00:00:00.000Z',
+          updatedAt: '2026-07-09T00:00:00.000Z'
+        }
+      ]
+    }))
+
+    await expect(service.remove(project.id)).rejects.toThrow(/generation is running/i)
+
+    const state = await storage.read()
+    expect(state.logoProjects.map((item) => item.id)).toEqual([project.id])
+    expect(state.generations.map((generation) => generation.id)).toEqual(['generation-1'])
+  })
+
+  test('does not delete an unrelated generation referenced by stale project data', async () => {
+    const project = legacyProject({ generationIds: ['external-generation'] })
+    await seedProject(project)
+    await storage.update((state) => ({
+      ...state,
+      generations: [
+        {
+          id: 'external-generation',
+          mode: 'text-to-image',
+          scenario: 'general',
+          promptOriginal: 'unrelated prompt',
+          promptFinal: 'unrelated prompt',
+          referenceImageIds: [],
+          parameters: {
+            size: '1024x1024',
+            count: 1,
+            quality: 'standard',
+            outputFormat: 'png'
+          },
+          outputVariantIds: [],
+          providerId: 'provider-1',
+          status: 'failed',
+          favorite: false,
+          createdAt: '2026-07-09T00:00:00.000Z',
+          updatedAt: '2026-07-09T00:00:00.000Z'
+        }
+      ]
+    }))
+
+    await service.remove(project.id)
+
+    const state = await storage.read()
+    expect(state.logoProjects).toEqual([])
+    expect(state.generations.map((generation) => generation.id)).toEqual(['external-generation'])
+  })
 })

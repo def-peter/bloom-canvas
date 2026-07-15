@@ -121,6 +121,7 @@ export function LogoResultsPanel({
                     selectedVariantIds.length === allVariantIds.length ? '取消全选' : '全选'
                   }
                   autoInsertSpace={false}
+                  disabled={generating}
                   onClick={() =>
                     setSelectedVariantIds(
                       selectedVariantIds.length === allVariantIds.length ? [] : allVariantIds
@@ -133,7 +134,7 @@ export function LogoResultsPanel({
                   aria-label={`删除所选（${selectedVariantIds.length}）`}
                   autoInsertSpace={false}
                   danger
-                  disabled={selectedVariantIds.length === 0}
+                  disabled={generating || selectedVariantIds.length === 0}
                   icon={<DeleteOutlined />}
                   onClick={() => setBatchDeleteOpen(true)}
                 >
@@ -153,6 +154,7 @@ export function LogoResultsPanel({
               <Button
                 aria-label="选择图片"
                 autoInsertSpace={false}
+                disabled={generating}
                 icon={<CheckSquareOutlined />}
                 onClick={() => setSelectionMode(true)}
               >
@@ -207,6 +209,7 @@ export function LogoResultsPanel({
                             </Button>
                             <Button
                               danger
+                              disabled={generating}
                               icon={<DeleteOutlined />}
                               size="small"
                               onClick={() => setDeleteTargetId(generation.id)}
@@ -249,7 +252,7 @@ export function LogoResultsPanel({
       <Modal
         cancelText="取消"
         confirmLoading={deleting}
-        okButtonProps={{ 'aria-label': '删除', danger: true }}
+        okButtonProps={{ 'aria-label': '删除', danger: true, disabled: generating }}
         okText="删除"
         open={Boolean(deleteTargetId)}
         title="删除这次 Logo 生成？"
@@ -263,7 +266,7 @@ export function LogoResultsPanel({
       <Modal
         cancelText="取消"
         confirmLoading={deleting}
-        okButtonProps={{ 'aria-label': '删除', danger: true }}
+        okButtonProps={{ 'aria-label': '删除', danger: true, disabled: generating }}
         okText="删除"
         open={batchDeleteOpen}
         title="删除所选图片？"

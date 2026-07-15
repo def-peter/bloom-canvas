@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { LogoProject } from '../../../../shared/types'
 
 interface LogoProjectPanelProps {
+  generating: boolean
   projects: LogoProject[]
   selectedId: string | null
   selectedProjectHasImages: boolean
@@ -13,6 +14,7 @@ interface LogoProjectPanelProps {
 }
 
 export function LogoProjectPanel({
+  generating,
   projects,
   selectedId,
   selectedProjectHasImages,
@@ -45,10 +47,16 @@ export function LogoProjectPanel({
           <Button
             aria-label="删除项目"
             danger
-            disabled={!selectedProject || selectedProjectHasImages}
+            disabled={!selectedProject || selectedProjectHasImages || generating}
             icon={<DeleteOutlined />}
             size="small"
-            title={selectedProjectHasImages ? '请先删除项目中的图片' : undefined}
+            title={
+              generating
+                ? '生成完成后才能删除项目'
+                : selectedProjectHasImages
+                  ? '请先删除项目中的图片'
+                  : undefined
+            }
             onClick={() => setDeleteOpen(true)}
           />
           <Button icon={<PlusOutlined />} size="small" type="primary" onClick={onCreateNew}>
@@ -74,7 +82,7 @@ export function LogoProjectPanel({
       <Modal
         cancelText="取消"
         confirmLoading={deleting}
-        okButtonProps={{ danger: true }}
+        okButtonProps={{ danger: true, disabled: generating }}
         okText="删除"
         open={deleteOpen}
         title="删除 Logo 项目？"

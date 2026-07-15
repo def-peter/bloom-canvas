@@ -4,11 +4,45 @@ import type { LogoStrategyPromptPack } from './logoDesign'
 import {
   buildLogoPromptPackSchema,
   createGenerationSchema,
+  generationParametersSchema,
   logoDesignRevisionSchema,
   logoPromptPackSchema,
   logoStrategyPromptPackSchema,
   saveLogoProjectSchema
 } from './schemas'
+
+const validGenerationParameters = {
+  count: 1,
+  quality: 'standard',
+  outputFormat: 'png'
+} as const
+
+describe('generation parameters schema', () => {
+  test.each(['1024x1024', '1024x1536', '1536x1024', 'auto'])('accepts standard size %s', (size) => {
+    expect(generationParametersSchema.parse({ ...validGenerationParameters, size }).size).toBe(size)
+  })
+
+  test('accepts a valid flexible image size', () => {
+    expect(
+      generationParametersSchema.parse({
+        ...validGenerationParameters,
+        size: '1536x864'
+      }).size
+    ).toBe('1536x864')
+  })
+
+  test('rejects a size whose dimensions are not multiples of 16', () => {
+    const result = generationParametersSchema.safeParse({
+      ...validGenerationParameters,
+      size: '1537x864'
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toContain('16')
+    }
+  })
+})
 
 const validStrategy = {
   id: 'strategy-path',

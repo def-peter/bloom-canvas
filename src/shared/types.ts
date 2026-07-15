@@ -4,8 +4,10 @@ import type {
   LogoType,
   LogoUsageScenario
 } from './logoDesign'
+import type { GenerationSize } from './imageSize'
 
 export type * from './logoDesign'
+export type { GenerationSize } from './imageSize'
 
 export type ProviderId = string
 export type GenerationId = string
@@ -30,7 +32,7 @@ export type LogoStyleDirectionId =
   | 'eastern-modern'
   | 'premium-restraint'
 export interface GenerationParameters {
-  size: '1024x1024' | '1024x1536' | '1536x1024' | 'auto'
+  size: GenerationSize
   count: number
   quality: ImageQuality
   outputFormat: OutputFormat

@@ -1,7 +1,19 @@
 import { z } from 'zod'
+import { getImageSizeError } from './imageSize'
+import type { GenerationSize } from './imageSize'
+
+const generationSizeSchema = z
+  .string()
+  .superRefine((size, context) => {
+    const error = getImageSizeError(size)
+    if (error) {
+      context.addIssue({ code: 'custom', message: error })
+    }
+  })
+  .transform((size): GenerationSize => size as GenerationSize)
 
 export const generationParametersSchema = z.object({
-  size: z.enum(['1024x1024', '1024x1536', '1536x1024', 'auto']),
+  size: generationSizeSchema,
   count: z.number().int().min(1).max(4),
   quality: z.enum(['standard', 'hd']),
   outputFormat: z.enum(['png', 'jpeg', 'webp'])

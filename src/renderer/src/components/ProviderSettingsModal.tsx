@@ -1,5 +1,6 @@
 import { Button, Form, Input, Modal, Space } from 'antd'
 import { useEffect } from 'react'
+import { DEFAULT_PROMPT_MODEL } from '../../../shared/providerDefaults'
 import type { ProviderConfig, SaveProviderInput } from '../../../shared/types'
 import { bloomCanvasClient } from '../api/bloomCanvasClient'
 
@@ -27,7 +28,7 @@ export function ProviderSettingsModal({
       name: provider?.name ?? 'OpenAI',
       baseUrl: provider?.baseUrl ?? 'https://api.openai.com/v1',
       imageModel: provider?.imageModel ?? 'gpt-image-2',
-      promptModel: provider?.promptModel ?? ''
+      promptModel: provider?.promptModel ?? DEFAULT_PROMPT_MODEL
     })
   }, [form, open, provider])
 
@@ -75,8 +76,8 @@ export function ProviderSettingsModal({
         >
           <Input placeholder="gpt-image-2" />
         </Form.Item>
-        <Form.Item label="提示词优化模型" name="promptModel">
-          <Input placeholder="gpt-5.5" />
+        <Form.Item label="策略与提示词模型" name="promptModel">
+          <Input placeholder={DEFAULT_PROMPT_MODEL} />
         </Form.Item>
         <Space style={{ justifyContent: 'flex-end', width: '100%' }}>
           <Button onClick={onClose}>取消</Button>

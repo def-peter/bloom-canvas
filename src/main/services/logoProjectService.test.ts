@@ -500,4 +500,60 @@ describe('LogoProjectService', () => {
     expect(updated.generationIds).toEqual(['generation-1'])
     expect(updated.promptPack?.directions).toHaveLength(2)
   })
+
+  test('removes a logo project without image variants', async () => {
+    const project = legacyProject({ generationIds: ['stale-generation'] })
+    await seedProject(project)
+
+    await service.remove(project.id)
+
+    const state = await storage.read()
+    expect(state.logoProjects).toEqual([])
+  })
+
+  test('rejects removal while a logo project still has an image variant', async () => {
+    const project = legacyProject({ generationIds: ['generation-1'] })
+    await seedProject(project)
+    await storage.update((state) => ({
+      ...state,
+      generations: [
+        {
+          id: 'generation-1',
+          mode: 'text-to-image',
+          scenario: 'logo-design',
+          projectId: project.id,
+          promptOriginal: 'logo prompt',
+          promptFinal: 'logo prompt',
+          referenceImageIds: [],
+          parameters: {
+            size: '1024x1024',
+            count: 1,
+            quality: 'standard',
+            outputFormat: 'png'
+          },
+          outputVariantIds: ['variant-1'],
+          providerId: 'provider-1',
+          status: 'succeeded',
+          favorite: false,
+          createdAt: '2026-07-09T00:00:00.000Z',
+          updatedAt: '2026-07-09T00:00:00.000Z'
+        }
+      ],
+      variants: [
+        {
+          id: 'variant-1',
+          generationId: 'generation-1',
+          assetId: 'asset-1',
+          index: 0,
+          favorite: false,
+          createdAt: '2026-07-09T00:00:00.000Z'
+        }
+      ]
+    }))
+
+    await expect(service.remove(project.id)).rejects.toThrow(/still has images/i)
+
+    const state = await storage.read()
+    expect(state.logoProjects.map((item) => item.id)).toEqual([project.id])
+  })
 })

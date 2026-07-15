@@ -65,6 +65,31 @@ export class LogoProjectService {
     return project
   }
 
+  async remove(id: LogoProjectId): Promise<void> {
+    const state = await this.storage.read()
+    const project = state.logoProjects.find((item) => item.id === id)
+    if (!project) throw new Error('Logo project not found')
+
+    const projectGenerationIds = new Set([
+      ...project.generationIds,
+      ...state.generations
+        .filter((generation) => generation.projectId === id)
+        .map((generation) => generation.id)
+    ])
+    const hasImages = state.variants.some((variant) =>
+      projectGenerationIds.has(variant.generationId)
+    )
+    if (hasImages) throw new Error('Logo project still has images')
+
+    await this.storage.write({
+      ...state,
+      generations: state.generations.filter(
+        (generation) => !projectGenerationIds.has(generation.id)
+      ),
+      logoProjects: state.logoProjects.filter((item) => item.id !== id)
+    })
+  }
+
   async save(input: SaveLogoProjectInput): Promise<LogoProject> {
     const logoType = input.logoTypes[0]
     if (!logoType) throw new Error('Logo project requires a logo type')

@@ -17,7 +17,7 @@ import {
   Tooltip,
   Typography
 } from 'antd'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { assetProtocolUrl } from '../../../shared/assetProtocol'
 import type { Asset, GenerationRecord } from '../../../shared/types'
 import { summarizeGenerationError } from '../utils/generationStatus'
@@ -45,12 +45,6 @@ export function GalleryPanel({
   const [selectedVariantIds, setSelectedVariantIds] = useState<string[]>([])
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
-
-  useEffect(() => {
-    setSelectionMode(false)
-    setSelectedVariantIds([])
-    setDeleteOpen(false)
-  }, [generation?.id])
 
   function toggleVariant(variantId: string): void {
     setSelectedVariantIds((current) =>

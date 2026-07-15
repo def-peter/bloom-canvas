@@ -1,6 +1,6 @@
 import { CheckSquareOutlined, DeleteOutlined } from '@ant-design/icons'
 import { Button, Checkbox, Collapse, Empty, Image, Modal, Space, Spin, Typography } from 'antd'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { assetProtocolUrl } from '../../../../shared/assetProtocol'
 import type { Asset, GenerationRecord } from '../../../../shared/types'
 import { LogoUsabilityPreview } from './LogoUsabilityPreview'
@@ -40,12 +40,6 @@ export function LogoResultsPanel({
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedVariantIds, setSelectedVariantIds] = useState<string[]>([])
   const [batchDeleteOpen, setBatchDeleteOpen] = useState(false)
-
-  useEffect(() => {
-    setSelectionMode(false)
-    setSelectedVariantIds([])
-    setBatchDeleteOpen(false)
-  }, [selectedProjectId])
 
   async function retryGeneration(generationId: string): Promise<void> {
     setRetryingGenerationId(generationId)

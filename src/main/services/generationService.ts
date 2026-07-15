@@ -236,12 +236,8 @@ export class GenerationService {
     }
 
     const removedAssetIds = new Set(removedVariants.map((variant) => variant.assetId))
-    const affectedGenerationIds = new Set(
-      removedVariants.map((variant) => variant.generationId)
-    )
-    const nextVariants = current.variants.filter(
-      (variant) => !requestedVariantIds.has(variant.id)
-    )
+    const affectedGenerationIds = new Set(removedVariants.map((variant) => variant.generationId))
+    const nextVariants = current.variants.filter((variant) => !requestedVariantIds.has(variant.id))
     const generationsWithUpdatedOutputs = current.generations.map((generation) =>
       affectedGenerationIds.has(generation.id)
         ? {

@@ -221,6 +221,7 @@ function WorkbenchShell(): React.JSX.Element {
             onSelect={selectGeneration}
           />
           <GalleryPanel
+            key={selectedGeneration?.id ?? 'no-generation'}
             generating={generating}
             generation={selectedGeneration}
             onContinueEdit={handleContinueEdit}
@@ -253,6 +254,7 @@ function WorkbenchShell(): React.JSX.Element {
             onSelect={selectLogoProject}
           />
           <LogoResultsPanel
+            key={selectedLogoProject?.id ?? 'no-logo-project'}
             generating={generating}
             generations={generations}
             selectedProjectId={selectedLogoProject?.id ?? null}

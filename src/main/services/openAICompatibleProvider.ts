@@ -1,5 +1,6 @@
 import { readFile } from 'fs/promises'
 import { basename } from 'path'
+import { getImageSizeModelError } from '../../shared/imageSize'
 import type { Asset, GenerationParameters, ProviderConfig } from '../../shared/types'
 
 export interface GenerateImageRequest {
@@ -17,6 +18,9 @@ export interface GeneratedImage {
 
 export class OpenAICompatibleProvider {
   async generateImages(request: GenerateImageRequest): Promise<GeneratedImage[]> {
+    const sizeError = getImageSizeModelError(request.provider.imageModel, request.parameters.size)
+    if (sizeError) throw new Error(sizeError)
+
     const endpoint = request.references.length > 0 ? 'images/edits' : 'images/generations'
     const url = `${request.provider.baseUrl.replace(/\/+$/, '')}/${endpoint}`
     const results: GeneratedImage[] = []

@@ -26,18 +26,62 @@ function createRequest(): GenerateImageRequest {
   }
 }
 
+function successfulImageFetch(): ReturnType<typeof vi.fn> {
+  return vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      data: [{ b64_json: Buffer.from('image-bytes').toString('base64') }]
+    })
+  })
+}
+
 afterEach(() => {
   vi.unstubAllGlobals()
 })
 
 describe('OpenAICompatibleProvider', () => {
-  it('calls images/generations for text-to-image', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        data: [{ b64_json: Buffer.from('image-bytes').toString('base64') }]
-      })
+  it('passes a valid flexible image size through to text-to-image requests', async () => {
+    const fetchMock = successfulImageFetch()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await new OpenAICompatibleProvider().generateImages({
+      ...createRequest(),
+      parameters: { ...createRequest().parameters, size: '1536x864' }
     })
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as Record<string, unknown>
+    expect(body.size).toBe('1536x864')
+  })
+
+  it('rejects custom sizes for image models without flexible-size support before fetch', async () => {
+    const fetchMock = successfulImageFetch()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      new OpenAICompatibleProvider().generateImages({
+        ...createRequest(),
+        provider: { ...createRequest().provider, imageModel: 'gpt-image-1.5' },
+        parameters: { ...createRequest().parameters, size: '1536x864' }
+      })
+    ).rejects.toThrow('不支持自定义尺寸')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects invalid image dimensions before fetch', async () => {
+    const fetchMock = successfulImageFetch()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      new OpenAICompatibleProvider().generateImages({
+        ...createRequest(),
+        parameters: { ...createRequest().parameters, size: '1537x864' }
+      })
+    ).rejects.toThrow('16 的倍数')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('calls images/generations for text-to-image', async () => {
+    const fetchMock = successfulImageFetch()
     vi.stubGlobal('fetch', fetchMock)
 
     const provider = new OpenAICompatibleProvider()
@@ -54,12 +98,7 @@ describe('OpenAICompatibleProvider', () => {
   })
 
   it('omits n for single-image requests for Responses-compatible image tools', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        data: [{ b64_json: Buffer.from('image-bytes').toString('base64') }]
-      })
-    })
+    const fetchMock = successfulImageFetch()
     vi.stubGlobal('fetch', fetchMock)
 
     await new OpenAICompatibleProvider().generateImages(createRequest())

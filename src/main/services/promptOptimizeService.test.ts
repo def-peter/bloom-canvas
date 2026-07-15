@@ -41,4 +41,51 @@ describe('PromptOptimizeService', () => {
     expect(systemInstruction).toContain('只输出')
     expect(systemInstruction).not.toContain('必须重写')
   })
+
+  it('reads nested Responses output instead of returning the original prompt', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            output: [
+              {
+                type: 'message',
+                content: [
+                  {
+                    type: 'output_text',
+                    text: '突出主体轮廓，使用克制的双色构图。'
+                  }
+                ]
+              }
+            ]
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
+      )
+    )
+
+    await expect(
+      new PromptOptimizeService().optimize(provider, 'sk-test', '生成一个软件 Logo')
+    ).resolves.toBe('突出主体轮廓，使用克制的双色构图。')
+  })
+
+  it('rejects a successful response without text instead of pretending optimization succeeded', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ output: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      )
+    )
+
+    await expect(
+      new PromptOptimizeService().optimize(provider, 'sk-test', '生成一个软件 Logo')
+    ).rejects.toThrow('Responses API returned no text output')
+  })
 })

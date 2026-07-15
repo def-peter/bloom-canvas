@@ -1,4 +1,5 @@
 import type { ProviderConfig } from '../../shared/types'
+import { OpenAIResponsesClient } from './openAIResponsesClient'
 
 const IMAGE_PROMPT_OPTIMIZER_INSTRUCTION = [
   '你是图像生成提示词编辑器。',
@@ -12,38 +13,22 @@ const IMAGE_PROMPT_OPTIMIZER_INSTRUCTION = [
 ].join('\n')
 
 export class PromptOptimizeService {
+  constructor(private readonly responses = new OpenAIResponsesClient()) {}
+
   async optimize(provider: ProviderConfig, apiKey: string, prompt: string): Promise<string> {
     if (!provider.promptModel.trim()) {
       return prompt
     }
 
-    const response = await fetch(`${provider.baseUrl.replace(/\/+$/, '')}/responses`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
+    return this.responses.createText(provider, apiKey, [
+      {
+        role: 'system',
+        content: IMAGE_PROMPT_OPTIMIZER_INSTRUCTION
       },
-      body: JSON.stringify({
-        model: provider.promptModel,
-        input: [
-          {
-            role: 'system',
-            content: IMAGE_PROMPT_OPTIMIZER_INSTRUCTION
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ]
-      })
-    })
-
-    if (!response.ok) {
-      const text = await response.text()
-      throw new Error(`Prompt optimization failed: ${response.status} ${text}`)
-    }
-
-    const payload = (await response.json()) as { output_text?: string }
-    return payload.output_text?.trim() || prompt
+      {
+        role: 'user',
+        content: prompt
+      }
+    ])
   }
 }

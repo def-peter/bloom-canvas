@@ -12,6 +12,7 @@ import {
   Typography
 } from 'antd'
 import { useEffect, useState } from 'react'
+import { getImageSizeModelError } from '../../../../shared/imageSize'
 import type {
   AppSettings,
   Asset,
@@ -27,6 +28,7 @@ import type {
 } from '../../../../shared/types'
 import { bloomCanvasClient } from '../../api/bloomCanvasClient'
 import { assertGenerationSucceeded } from '../../utils/generationStatus'
+import { ImageSizeControl } from '../ImageSizeControl'
 import {
   defaultLogoStyleDirections,
   logoStyleDirectionOptions,
@@ -386,15 +388,20 @@ export function LogoCreationPanel({
         <LogoPromptPreview promptPack={promptPack} />
 
         <Space.Compact block>
-          <Form.Item label="尺寸" name="size" style={{ flex: 1 }}>
-            <Select
-              options={[
-                { label: '1024 x 1024', value: '1024x1024' },
-                { label: '1024 x 1536', value: '1024x1536' },
-                { label: '1536 x 1024', value: '1536x1024' },
-                { label: '自动', value: 'auto' }
-              ]}
-            />
+          <Form.Item
+            label="尺寸"
+            name="size"
+            rules={[
+              {
+                validator: async (_, value: GenerationParameters['size']) => {
+                  const error = getImageSizeModelError(activeProvider?.imageModel ?? '', value)
+                  if (error) throw new Error(error)
+                }
+              }
+            ]}
+            style={{ flex: 1 }}
+          >
+            <ImageSizeControl imageModel={activeProvider?.imageModel} />
           </Form.Item>
           <Form.Item label="每方向数量" name="count" style={{ width: 112 }}>
             <InputNumber max={2} min={1} style={{ width: '100%' }} />

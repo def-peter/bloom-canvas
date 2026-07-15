@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GenerationRecord, ProviderConfig } from '../../../shared/types'
 import { bloomCanvasClient } from '../api/bloomCanvasClient'
 import { CreationPanel } from './CreationPanel'
@@ -46,7 +46,85 @@ const failedRecord: GenerationRecord = {
   variants: []
 }
 
+const succeededRecord: GenerationRecord = {
+  ...failedRecord,
+  parameters: {
+    ...failedRecord.parameters,
+    size: '1536x864'
+  },
+  status: 'succeeded',
+  errorMessage: undefined
+}
+
+function renderPanel(
+  overrides?: Partial<React.ComponentProps<typeof CreationPanel>>
+): ReturnType<typeof render> {
+  return render(
+    <CreationPanel
+      activeProvider={provider}
+      referenceAssets={[]}
+      settings={null}
+      onCreated={vi.fn().mockResolvedValue(undefined)}
+      onError={vi.fn()}
+      onGeneratingChange={vi.fn()}
+      onNeedProvider={vi.fn()}
+      onReferenceAssetsChange={vi.fn()}
+      {...overrides}
+    />
+  )
+}
+
+function openSizeSelect(): void {
+  fireEvent.mouseDown(screen.getByLabelText('图像尺寸'))
+}
+
 describe('CreationPanel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('shows flexible image sizes for gpt-image-2 providers', () => {
+    renderPanel()
+
+    openSizeSelect()
+
+    expect(screen.getByText('1536 x 864')).toBeInTheDocument()
+    expect(screen.getByText('自定义')).toBeInTheDocument()
+  })
+
+  it('generates with a custom controlled image size', async () => {
+    vi.mocked(bloomCanvasClient.generations.create).mockResolvedValue(succeededRecord)
+    renderPanel()
+
+    fireEvent.change(screen.getByLabelText('提示词'), { target: { value: '一朵发光的花' } })
+    openSizeSelect()
+    fireEvent.click(screen.getByText('自定义'))
+    fireEvent.change(screen.getByLabelText('自定义宽度'), { target: { value: '1536' } })
+    fireEvent.change(screen.getByLabelText('自定义高度'), { target: { value: '864' } })
+    fireEvent.click(screen.getByRole('button', { name: '生成' }))
+
+    await waitFor(() => expect(bloomCanvasClient.generations.create).toHaveBeenCalledOnce())
+    expect(bloomCanvasClient.generations.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parameters: expect.objectContaining({ size: '1536x864' })
+      })
+    )
+  })
+
+  it('blocks generation when a custom dimension is not a multiple of 16', async () => {
+    renderPanel()
+
+    fireEvent.change(screen.getByLabelText('提示词'), { target: { value: '一朵发光的花' } })
+    openSizeSelect()
+    fireEvent.click(screen.getByText('自定义'))
+    fireEvent.change(screen.getByLabelText('自定义宽度'), { target: { value: '1537' } })
+    fireEvent.change(screen.getByLabelText('自定义高度'), { target: { value: '864' } })
+    fireEvent.click(screen.getByRole('button', { name: '生成' }))
+
+    await waitFor(() => expect(screen.getByText('宽高必须均为 16 的倍数')).toBeInTheDocument())
+    expect(bloomCanvasClient.generations.create).not.toHaveBeenCalled()
+  })
+
   it('opens provider settings when generating without provider', () => {
     const onNeedProvider = vi.fn()
 
@@ -73,18 +151,7 @@ describe('CreationPanel', () => {
     const onCreated = vi.fn()
     const onError = vi.fn()
 
-    render(
-      <CreationPanel
-        activeProvider={provider}
-        referenceAssets={[]}
-        settings={null}
-        onCreated={onCreated}
-        onError={onError}
-        onGeneratingChange={vi.fn()}
-        onNeedProvider={vi.fn()}
-        onReferenceAssetsChange={vi.fn()}
-      />
-    )
+    renderPanel({ onCreated, onError })
 
     fireEvent.change(screen.getByLabelText('提示词'), { target: { value: '一朵发光的花' } })
     fireEvent.click(screen.getByRole('button', { name: '生成' }))

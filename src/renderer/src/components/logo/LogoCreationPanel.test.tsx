@@ -109,6 +109,15 @@ describe('LogoCreationPanel', () => {
     vi.clearAllMocks()
   })
 
+  test('shows flexible image sizes for gpt-image-2 providers', () => {
+    renderPanel()
+
+    fireEvent.mouseDown(screen.getByLabelText('图像尺寸'))
+
+    expect(screen.getByText('1536 x 864')).toBeInTheDocument()
+    expect(screen.getByText('自定义')).toBeInTheDocument()
+  })
+
   test('explains logo type choices in plain language', () => {
     renderPanel()
 

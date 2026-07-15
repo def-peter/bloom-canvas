@@ -2,6 +2,7 @@ import { BulbOutlined, CloseOutlined, DeleteOutlined, FileImageOutlined } from '
 import { Button, Form, Image, Input, InputNumber, Select, Space, Upload, Typography } from 'antd'
 import { useState } from 'react'
 import { assetProtocolUrl, thumbnailProtocolUrl } from '../../../shared/assetProtocol'
+import { getImageSizeModelError } from '../../../shared/imageSize'
 import type {
   AppSettings,
   Asset,
@@ -11,6 +12,7 @@ import type {
 } from '../../../shared/types'
 import { bloomCanvasClient } from '../api/bloomCanvasClient'
 import { assertGenerationSucceeded } from '../utils/generationStatus'
+import { ImageSizeControl } from './ImageSizeControl'
 
 interface CreationPanelProps {
   activeProvider: ProviderConfig | null
@@ -93,7 +95,12 @@ export function CreationPanel({
       return
     }
 
-    const values = await form.validateFields()
+    let values: CreationFormValues
+    try {
+      values = await form.validateFields()
+    } catch {
+      return
+    }
     onGeneratingChange(true)
     try {
       const record = await bloomCanvasClient.generations.create({
@@ -215,15 +222,20 @@ export function CreationPanel({
           </div>
         ) : null}
         <Space.Compact block>
-          <Form.Item label="尺寸" name="size" style={{ flex: 1 }}>
-            <Select
-              options={[
-                { label: '1024 x 1024', value: '1024x1024' },
-                { label: '1024 x 1536', value: '1024x1536' },
-                { label: '1536 x 1024', value: '1536x1024' },
-                { label: '自动', value: 'auto' }
-              ]}
-            />
+          <Form.Item
+            label="尺寸"
+            name="size"
+            rules={[
+              {
+                validator: async (_, value: GenerationParameters['size']) => {
+                  const error = getImageSizeModelError(activeProvider?.imageModel ?? '', value)
+                  if (error) throw new Error(error)
+                }
+              }
+            ]}
+            style={{ flex: 1 }}
+          >
+            <ImageSizeControl imageModel={activeProvider?.imageModel} />
           </Form.Item>
           <Form.Item label="数量" name="count" style={{ width: 96 }}>
             <InputNumber max={4} min={1} style={{ width: '100%' }} />

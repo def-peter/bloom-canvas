@@ -16,7 +16,13 @@ function selectedSizeContent(): HTMLElement {
 
 function ControlledImageSize(): React.JSX.Element {
   const [value, setValue] = useState<GenerationSize>('1024x1024')
-  return <ImageSizeControl imageModel="gpt-image-2" value={value} onChange={setValue} />
+  return (
+    <>
+      <button onClick={() => setValue('1024x1024')}>重置受控尺寸</button>
+      <button onClick={() => setValue('1536x864')}>外部设置灵活预设</button>
+      <ImageSizeControl imageModel="gpt-image-2" value={value} onChange={setValue} />
+    </>
+  )
 }
 
 describe('ImageSizeControl', () => {
@@ -86,6 +92,24 @@ describe('ImageSizeControl', () => {
     expect(selectedSizeContent()).toHaveTextContent('自定义')
     expect(screen.getByLabelText('自定义宽度')).toHaveValue('1536')
     expect(screen.getByLabelText('自定义高度')).toHaveValue('864')
+  })
+
+  it('does not revive an expired custom session when its old draft returns', () => {
+    render(<ControlledImageSize />)
+
+    openSizeSelect()
+    fireEvent.click(screen.getByText('自定义'))
+    fireEvent.change(screen.getByLabelText('自定义宽度'), { target: { value: '1536' } })
+    fireEvent.change(screen.getByLabelText('自定义高度'), { target: { value: '864' } })
+    expect(selectedSizeContent()).toHaveTextContent('自定义')
+
+    fireEvent.click(screen.getByRole('button', { name: '重置受控尺寸' }))
+    expect(selectedSizeContent()).toHaveTextContent('1024 x 1024')
+    expect(screen.queryByLabelText('自定义宽度')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '外部设置灵活预设' }))
+    expect(selectedSizeContent()).toHaveTextContent('1536 x 864')
+    expect(screen.queryByLabelText('自定义宽度')).not.toBeInTheDocument()
   })
 
   it('keeps the controlled value when the parent rejects a preset change', () => {

@@ -23,6 +23,11 @@ interface ImageSizeControlInnerProps {
   onChange?: (value: GenerationSize) => void
 }
 
+interface ControlledCustomSession {
+  id: number
+  draft: GenerationSize
+}
+
 const DEFAULT_SIZE = '1024x1024' as const
 const DEFAULT_DIMENSIONS = { width: 1024, height: 1024 }
 const STANDARD_OPTIONS = [
@@ -99,15 +104,20 @@ function ImageSizeControlInner({
   const [uncontrolledMode, setUncontrolledMode] = useState<SizeMode>(() =>
     getValueMode(value, flexible)
   )
-  const [controlledCustomDraft, setControlledCustomDraft] = useState<GenerationSize | null>(null)
+  const [controlledCustomSession, setControlledCustomSession] =
+    useState<ControlledCustomSession | null>(null)
   const [width, setWidth] = useState<number | null>(initialDimensions.width)
   const [height, setHeight] = useState<number | null>(initialDimensions.height)
   const normalizedValueRef = useRef<GenerationSize | null>(null)
+  const customSessionIdRef = useRef(0)
+  if (controlled && controlledCustomSession && controlledCustomSession.draft !== value) {
+    setControlledCustomSession(null)
+  }
   const valueMode = getValueMode(value, flexible)
-  const controlledCustomSession =
-    controlled && controlledCustomDraft !== null && controlledCustomDraft === value
+  const controlledCustomActive =
+    controlled && controlledCustomSession !== null && controlledCustomSession.draft === value
   const mode = controlled
-    ? valueMode === 'custom' || controlledCustomSession
+    ? valueMode === 'custom' || controlledCustomActive
       ? 'custom'
       : valueMode
     : uncontrolledMode
@@ -138,7 +148,7 @@ function ImageSizeControlInner({
     if (nextMode !== 'custom') {
       const nextSize = nextMode as GenerationSize
       if (controlled) {
-        setControlledCustomDraft(null)
+        setControlledCustomSession(null)
       } else {
         setUncontrolledMode(nextSize)
       }
@@ -147,7 +157,11 @@ function ImageSizeControlInner({
     }
 
     if (controlled) {
-      setControlledCustomDraft(value ?? DEFAULT_SIZE)
+      customSessionIdRef.current += 1
+      setControlledCustomSession({
+        id: customSessionIdRef.current,
+        draft: value ?? DEFAULT_SIZE
+      })
       return
     }
 
@@ -155,6 +169,15 @@ function ImageSizeControlInner({
     setWidth(dimensions?.width ?? DEFAULT_DIMENSIONS.width)
     setHeight(dimensions?.height ?? DEFAULT_DIMENSIONS.height)
     setUncontrolledMode('custom')
+  }
+
+  function updateControlledCustomDraft(draft: GenerationSize): void {
+    let sessionId = controlledCustomSession?.id
+    if (sessionId === undefined) {
+      customSessionIdRef.current += 1
+      sessionId = customSessionIdRef.current
+    }
+    setControlledCustomSession({ id: sessionId, draft })
   }
 
   function changeWidth(nextValue: number | string | null): void {
@@ -165,7 +188,7 @@ function ImageSizeControlInner({
     }
     if (nextWidth !== null && displayedHeight !== null) {
       const nextSize = `${nextWidth}x${displayedHeight}` as const
-      if (controlled) setControlledCustomDraft(nextSize)
+      if (controlled) updateControlledCustomDraft(nextSize)
       onChange?.(nextSize)
     }
   }
@@ -178,7 +201,7 @@ function ImageSizeControlInner({
     }
     if (displayedWidth !== null && nextHeight !== null) {
       const nextSize = `${displayedWidth}x${nextHeight}` as const
-      if (controlled) setControlledCustomDraft(nextSize)
+      if (controlled) updateControlledCustomDraft(nextSize)
       onChange?.(nextSize)
     }
   }

@@ -230,6 +230,22 @@ body {
   margin-bottom: 14px;
 }
 
+.image-size-control {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.image-size-custom-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.image-size-custom-fields .ant-input-number {
+  width: 100%;
+}
+
 .reference-summary {
   margin-top: 10px;
   margin-bottom: 14px;

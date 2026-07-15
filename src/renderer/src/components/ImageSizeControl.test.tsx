@@ -44,11 +44,19 @@ describe('ImageSizeControl', () => {
   })
 
   it('restores custom mode from a controlled non-standard size', () => {
-    render(<ImageSizeControl imageModel="gpt-image-2" value="1536x864" />)
+    render(<ImageSizeControl imageModel="gpt-image-2" value="1200x800" />)
 
     expect(screen.getByText('自定义')).toBeInTheDocument()
-    expect(screen.getByLabelText('自定义宽度')).toHaveValue('1536')
-    expect(screen.getByLabelText('自定义高度')).toHaveValue('864')
+    expect(screen.getByLabelText('自定义宽度')).toHaveValue('1200')
+    expect(screen.getByLabelText('自定义高度')).toHaveValue('800')
+  })
+
+  it('keeps flexible presets in preset mode', () => {
+    render(<ImageSizeControl imageModel="gpt-image-2" value="1536x864" />)
+
+    expect(screen.getByText('1536 x 864')).toBeInTheDocument()
+    expect(screen.queryByLabelText('自定义宽度')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('自定义高度')).not.toBeInTheDocument()
   })
 
   it('normalizes a non-standard size once when the model loses flexible-size support', async () => {
@@ -89,6 +97,21 @@ describe('ImageSizeControl', () => {
 
     await waitFor(() => expect(onChange).toHaveBeenCalledWith('1024x1024'))
     expect(onChange).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not restore an uncontrolled custom mode after a model capability round trip', () => {
+    const { rerender } = render(<ImageSizeControl imageModel="gpt-image-2" />)
+
+    openSizeSelect()
+    fireEvent.click(screen.getByText('自定义'))
+    expect(screen.getByLabelText('自定义宽度')).toBeInTheDocument()
+
+    rerender(<ImageSizeControl imageModel="gpt-image-1.5" />)
+    expect(screen.queryByLabelText('自定义宽度')).not.toBeInTheDocument()
+
+    rerender(<ImageSizeControl imageModel="gpt-image-2" />)
+    expect(screen.queryByLabelText('自定义宽度')).not.toBeInTheDocument()
+    expect(screen.getByText('1024 x 1024')).toBeInTheDocument()
   })
 
   it('keeps the other controlled dimension when editing a custom size', () => {

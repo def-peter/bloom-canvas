@@ -22,6 +22,12 @@ interface SizeSelection {
   requestedValue?: GenerationSize
 }
 
+interface ImageSizeControlInnerProps {
+  flexible: boolean
+  value?: GenerationSize
+  onChange?: (value: GenerationSize) => void
+}
+
 const DEFAULT_SIZE = '1024x1024' as const
 const DEFAULT_DIMENSIONS = { width: 1024, height: 1024 }
 const STANDARD_OPTIONS = [
@@ -45,9 +51,13 @@ function isPresetSize(size: GenerationSize): boolean {
   return size === 'auto' || FLEXIBLE_IMAGE_SIZE_PRESETS.some((presetSize) => presetSize === size)
 }
 
+function isAvailablePreset(size: GenerationSize, flexible: boolean): boolean {
+  return flexible ? isPresetSize(size) : isStandardSize(size)
+}
+
 function getInitialMode(value: GenerationSize | undefined, flexible: boolean): SizeMode {
   if (!value) return DEFAULT_SIZE
-  if (flexible && !isStandardSize(value) && parseImageSize(value)) return 'custom'
+  if (flexible && !isAvailablePreset(value, flexible) && parseImageSize(value)) return 'custom'
   return value
 }
 
@@ -63,6 +73,29 @@ export function ImageSizeControl({
   onChange
 }: ImageSizeControlProps): React.JSX.Element {
   const flexible = supportsFlexibleImageSize(imageModel ?? '')
+  const [uncontrolledValue, setUncontrolledValue] = useState<GenerationSize>()
+  const currentValue = value ?? uncontrolledValue
+
+  function changeValue(nextValue: GenerationSize): void {
+    if (value === undefined) setUncontrolledValue(nextValue)
+    onChange?.(nextValue)
+  }
+
+  return (
+    <ImageSizeControlInner
+      flexible={flexible}
+      key={flexible ? 'flexible' : 'standard'}
+      value={currentValue}
+      onChange={changeValue}
+    />
+  )
+}
+
+function ImageSizeControlInner({
+  flexible,
+  value,
+  onChange
+}: ImageSizeControlInnerProps): React.JSX.Element {
   const initialDimensions = (value && parseImageSize(value)) ?? DEFAULT_DIMENSIONS
   const [selection, setSelection] = useState<SizeSelection>(() => ({
     mode: getInitialMode(value, flexible),
@@ -77,13 +110,13 @@ export function ImageSizeControl({
     value === selection.valueAtSelection ||
     value === selection.requestedValue
   const mode: SizeMode = !flexible
-    ? value && isStandardSize(value)
+    ? value && isAvailablePreset(value, flexible)
       ? value
-      : isStandardSize(selection.mode as GenerationSize)
+      : selection.mode !== 'custom' && isAvailablePreset(selection.mode, flexible)
         ? selection.mode
         : DEFAULT_SIZE
     : value && !selectionMatchesValue
-      ? isStandardSize(value)
+      ? isAvailablePreset(value, flexible)
         ? value
         : 'custom'
       : selection.mode

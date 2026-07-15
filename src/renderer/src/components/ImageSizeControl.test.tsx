@@ -6,6 +6,12 @@ function openSizeSelect(): void {
   fireEvent.mouseDown(screen.getByLabelText('图像尺寸'))
 }
 
+function selectedSizeContent(): HTMLElement {
+  const content = screen.getByLabelText('图像尺寸').parentElement
+  if (!content) throw new Error('Select content is missing')
+  return content
+}
+
 describe('ImageSizeControl', () => {
   it('shows flexible presets and custom fields for gpt-image-2 models', () => {
     render(<ImageSizeControl imageModel="gpt-image-2-2026-07-15" />)
@@ -57,6 +63,32 @@ describe('ImageSizeControl', () => {
     expect(screen.getByText('1536 x 864')).toBeInTheDocument()
     expect(screen.queryByLabelText('自定义宽度')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('自定义高度')).not.toBeInTheDocument()
+  })
+
+  it('keeps the controlled value when the parent rejects a preset change', () => {
+    const onChange = vi.fn()
+    render(<ImageSizeControl imageModel="gpt-image-2" value="1024x1024" onChange={onChange} />)
+
+    openSizeSelect()
+    fireEvent.click(screen.getByText('1536 x 864'))
+
+    expect(onChange).toHaveBeenCalledWith('1536x864')
+    expect(selectedSizeContent()).toHaveTextContent('1024 x 1024')
+  })
+
+  it('follows a controlled value that is accepted and then reset', () => {
+    const onChange = vi.fn()
+    const { rerender } = render(
+      <ImageSizeControl imageModel="gpt-image-2" value="1024x1024" onChange={onChange} />
+    )
+
+    openSizeSelect()
+    fireEvent.click(screen.getByText('1536 x 864'))
+    rerender(<ImageSizeControl imageModel="gpt-image-2" value="1536x864" onChange={onChange} />)
+    expect(selectedSizeContent()).toHaveTextContent('1536 x 864')
+
+    rerender(<ImageSizeControl imageModel="gpt-image-2" value="1024x1024" onChange={onChange} />)
+    expect(selectedSizeContent()).toHaveTextContent('1024 x 1024')
   })
 
   it('normalizes a non-standard size once when the model loses flexible-size support', async () => {

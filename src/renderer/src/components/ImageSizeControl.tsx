@@ -16,13 +16,8 @@ export interface ImageSizeControlProps {
 
 type SizeMode = GenerationSize | 'custom'
 
-interface SizeSelection {
-  mode: SizeMode
-  valueAtSelection?: GenerationSize
-  requestedValue?: GenerationSize
-}
-
 interface ImageSizeControlInnerProps {
+  controlled: boolean
   flexible: boolean
   value?: GenerationSize
   onChange?: (value: GenerationSize) => void
@@ -55,10 +50,11 @@ function isAvailablePreset(size: GenerationSize, flexible: boolean): boolean {
   return flexible ? isPresetSize(size) : isStandardSize(size)
 }
 
-function getInitialMode(value: GenerationSize | undefined, flexible: boolean): SizeMode {
+function getValueMode(value: GenerationSize | undefined, flexible: boolean): SizeMode {
   if (!value) return DEFAULT_SIZE
-  if (flexible && !isAvailablePreset(value, flexible) && parseImageSize(value)) return 'custom'
-  return value
+  if (isAvailablePreset(value, flexible)) return value
+  if (flexible && parseImageSize(value)) return 'custom'
+  return DEFAULT_SIZE
 }
 
 function toNumber(value: number | string | null): number | null {
@@ -74,7 +70,8 @@ export function ImageSizeControl({
 }: ImageSizeControlProps): React.JSX.Element {
   const flexible = supportsFlexibleImageSize(imageModel ?? '')
   const [uncontrolledValue, setUncontrolledValue] = useState<GenerationSize>()
-  const currentValue = value ?? uncontrolledValue
+  const controlled = value !== undefined
+  const currentValue = controlled ? value : uncontrolledValue
 
   function changeValue(nextValue: GenerationSize): void {
     if (value === undefined) setUncontrolledValue(nextValue)
@@ -83,6 +80,7 @@ export function ImageSizeControl({
 
   return (
     <ImageSizeControlInner
+      controlled={controlled}
       flexible={flexible}
       key={flexible ? 'flexible' : 'standard'}
       value={currentValue}
@@ -92,45 +90,30 @@ export function ImageSizeControl({
 }
 
 function ImageSizeControlInner({
+  controlled,
   flexible,
   value,
   onChange
 }: ImageSizeControlInnerProps): React.JSX.Element {
   const initialDimensions = (value && parseImageSize(value)) ?? DEFAULT_DIMENSIONS
-  const [selection, setSelection] = useState<SizeSelection>(() => ({
-    mode: getInitialMode(value, flexible),
-    valueAtSelection: value,
-    requestedValue: value
-  }))
+  const [uncontrolledMode, setUncontrolledMode] = useState<SizeMode>(() =>
+    getValueMode(value, flexible)
+  )
   const [width, setWidth] = useState<number | null>(initialDimensions.width)
   const [height, setHeight] = useState<number | null>(initialDimensions.height)
   const normalizedValueRef = useRef<GenerationSize | null>(null)
-  const selectionMatchesValue =
-    value === undefined ||
-    value === selection.valueAtSelection ||
-    value === selection.requestedValue
-  const mode: SizeMode = !flexible
-    ? value && isAvailablePreset(value, flexible)
-      ? value
-      : selection.mode !== 'custom' && isAvailablePreset(selection.mode, flexible)
-        ? selection.mode
-        : DEFAULT_SIZE
-    : value && !selectionMatchesValue
-      ? isAvailablePreset(value, flexible)
-        ? value
-        : 'custom'
-      : selection.mode
+  const mode = controlled ? getValueMode(value, flexible) : uncontrolledMode
   const controlledDimensions =
-    mode === 'custom' && value && !selectionMatchesValue ? parseImageSize(value) : null
+    controlled && mode === 'custom' && value ? parseImageSize(value) : null
   const displayedWidth = controlledDimensions?.width ?? width
   const displayedHeight = controlledDimensions?.height ?? height
 
   useEffect(() => {
     const localSize: GenerationSize =
-      selection.mode === 'custom' && width !== null && height !== null
+      uncontrolledMode === 'custom' && width !== null && height !== null
         ? `${width}x${height}`
         : DEFAULT_SIZE
-    const currentSize = value ?? (selection.mode === 'custom' ? localSize : selection.mode)
+    const currentSize = value ?? (uncontrolledMode === 'custom' ? localSize : uncontrolledMode)
 
     if (flexible || isStandardSize(currentSize)) {
       normalizedValueRef.current = null
@@ -141,46 +124,46 @@ function ImageSizeControlInner({
       normalizedValueRef.current = currentSize
       onChange?.(DEFAULT_SIZE)
     }
-  }, [flexible, height, onChange, selection.mode, value, width])
+  }, [flexible, height, onChange, uncontrolledMode, value, width])
 
   function selectMode(nextMode: string): void {
     if (nextMode !== 'custom') {
       const nextSize = nextMode as GenerationSize
-      setSelection({ mode: nextSize, valueAtSelection: value, requestedValue: nextSize })
+      if (!controlled) setUncontrolledMode(nextSize)
       onChange?.(nextSize)
       return
     }
+
+    if (controlled) return
 
     const dimensions = value && !isPresetSize(value) ? parseImageSize(value) : null
     setWidth(dimensions?.width ?? DEFAULT_DIMENSIONS.width)
     setHeight(dimensions?.height ?? DEFAULT_DIMENSIONS.height)
-    setSelection({ mode: 'custom', valueAtSelection: value, requestedValue: value })
+    setUncontrolledMode('custom')
   }
 
   function changeWidth(nextValue: number | string | null): void {
     const nextWidth = toNumber(nextValue)
-    setWidth(nextWidth)
-    setHeight(displayedHeight)
+    if (!controlled) {
+      setWidth(nextWidth)
+      setHeight(displayedHeight)
+    }
     if (nextWidth !== null && displayedHeight !== null) {
       const nextSize = `${nextWidth}x${displayedHeight}` as const
-      setSelection({ mode: 'custom', valueAtSelection: value, requestedValue: nextSize })
       onChange?.(nextSize)
-      return
     }
-    setSelection({ mode: 'custom', valueAtSelection: value, requestedValue: value })
   }
 
   function changeHeight(nextValue: number | string | null): void {
     const nextHeight = toNumber(nextValue)
-    setWidth(displayedWidth)
-    setHeight(nextHeight)
+    if (!controlled) {
+      setWidth(displayedWidth)
+      setHeight(nextHeight)
+    }
     if (displayedWidth !== null && nextHeight !== null) {
       const nextSize = `${displayedWidth}x${nextHeight}` as const
-      setSelection({ mode: 'custom', valueAtSelection: value, requestedValue: nextSize })
       onChange?.(nextSize)
-      return
     }
-    setSelection({ mode: 'custom', valueAtSelection: value, requestedValue: value })
   }
 
   return (

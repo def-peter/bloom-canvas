@@ -34,11 +34,13 @@ export const IPC_CHANNELS = {
   generationList: 'generation:list',
   generationFavorite: 'generation:favorite',
   generationRemove: 'generation:remove',
+  generationRemoveVariants: 'generation:removeVariants',
   generationRetry: 'generation:retry',
   promptOptimize: 'prompt:optimize',
   logoProjectList: 'logoProject:list',
   logoProjectSave: 'logoProject:save',
   logoProjectGet: 'logoProject:get',
+  logoProjectRemove: 'logoProject:remove',
   logoPromptBuild: 'logoPrompt:build',
   logoStrategyGenerate: 'logoStrategy:generate',
   logoPromptBuildStrategy: 'logoPrompt:buildStrategy'
@@ -64,6 +66,7 @@ export interface BloomCanvasApi {
     list: () => Promise<AppResult<GenerationRecord[]>>
     favorite: (generationId: string, favorite: boolean) => Promise<AppResult<GenerationRecord>>
     remove: (generationId: string) => Promise<AppResult<void>>
+    removeVariants: (variantIds: string[]) => Promise<AppResult<void>>
     retry: (generationId: string) => Promise<AppResult<GenerationRecord>>
   }
   prompt: {
@@ -73,6 +76,7 @@ export interface BloomCanvasApi {
     list: () => Promise<AppResult<LogoProject[]>>
     save: (input: SaveLogoProjectInput) => Promise<AppResult<LogoProject>>
     get: (id: LogoProjectId) => Promise<AppResult<LogoProject>>
+    remove: (id: LogoProjectId) => Promise<AppResult<void>>
   }
   logoStrategy: {
     generate: (input: GenerateLogoStrategiesInput) => Promise<AppResult<LogoDesignRevision>>

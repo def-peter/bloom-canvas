@@ -155,6 +155,7 @@ function installBloomCanvasApi(overrides: Partial<BloomCanvasApi> = {}): BloomCa
       create: vi.fn(),
       list: vi.fn().mockResolvedValue({ ok: true, data: [] }),
       remove: vi.fn(),
+      removeVariants: vi.fn(),
       favorite: vi.fn(),
       retry: vi.fn()
     },
@@ -164,7 +165,8 @@ function installBloomCanvasApi(overrides: Partial<BloomCanvasApi> = {}): BloomCa
     logoProjects: {
       list: vi.fn().mockResolvedValue({ ok: true, data: [] }),
       save: vi.fn(),
-      get: vi.fn()
+      get: vi.fn(),
+      remove: vi.fn()
     },
     logoStrategy: {
       generate: vi.fn()
@@ -215,6 +217,7 @@ describe('AppShell', () => {
         create,
         list: vi.fn().mockResolvedValue({ ok: true, data: [] }),
         remove: vi.fn(),
+        removeVariants: vi.fn(),
         favorite: vi.fn(),
         retry: vi.fn()
       }
@@ -246,6 +249,7 @@ describe('AppShell', () => {
         create,
         list: vi.fn().mockResolvedValue({ ok: true, data: [generatedRecordWithVariant] }),
         remove: vi.fn(),
+        removeVariants: vi.fn(),
         favorite: vi.fn(),
         retry: vi.fn()
       }
@@ -282,13 +286,15 @@ describe('AppShell', () => {
         create: vi.fn(),
         list: vi.fn().mockResolvedValue({ ok: true, data: [logoGeneratedRecordWithVariant] }),
         remove: vi.fn(),
+        removeVariants: vi.fn(),
         favorite: vi.fn(),
         retry: vi.fn()
       },
       logoProjects: {
         list: vi.fn().mockResolvedValue({ ok: true, data: [logoProject] }),
         save: vi.fn(),
-        get: vi.fn()
+        get: vi.fn(),
+        remove: vi.fn()
       }
     })
 
@@ -320,6 +326,7 @@ describe('AppShell', () => {
         create: vi.fn(),
         list,
         remove,
+        removeVariants: vi.fn(),
         favorite: vi.fn(),
         retry: vi.fn()
       }

@@ -1,5 +1,5 @@
 import { dialog, ipcMain } from 'electron'
-import { ZodError } from 'zod'
+import { z, ZodError } from 'zod'
 import { IPC_CHANNELS } from '../../shared/ipc'
 import {
   buildLogoStrategyPromptPackSchema,
@@ -150,6 +150,16 @@ export function registerIpcHandlers(): void {
     }
   })
 
+  ipcMain.handle(IPC_CHANNELS.generationRemoveVariants, async (_event, variantIds: unknown) => {
+    try {
+      const parsed = z.array(z.string().min(1)).min(1).max(100).parse(variantIds)
+      await generations.removeVariants(parsed)
+      return ok(undefined)
+    } catch (error) {
+      return err(toErrorPayload(error))
+    }
+  })
+
   ipcMain.handle(IPC_CHANNELS.promptOptimize, async (_event, input) => {
     try {
       const parsed = promptOptimizeSchema.parse(input)
@@ -177,6 +187,15 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.logoProjectSave, async (_event, input) => {
     try {
       return ok(await logoProjects.save(saveLogoProjectSchema.parse(input)))
+    } catch (error) {
+      return err(toErrorPayload(error))
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.logoProjectRemove, async (_event, id: string) => {
+    try {
+      await logoProjects.remove(id)
+      return ok(undefined)
     } catch (error) {
       return err(toErrorPayload(error))
     }

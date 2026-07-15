@@ -30,4 +30,19 @@ describe('preload bridge', () => {
       'buildStrategy: (input) => ipcRenderer.invoke(IPC_CHANNELS.logoPromptBuildStrategy, input)'
     )
   })
+
+  it('exposes variant batch deletion and logo project deletion channels', async () => {
+    const [ipcSource, preloadSource] = await Promise.all([
+      readFile(join(process.cwd(), 'src/shared/ipc.ts'), 'utf8'),
+      readFile(join(process.cwd(), 'src/preload/index.ts'), 'utf8')
+    ])
+
+    expect(ipcSource).toContain("generationRemoveVariants: 'generation:removeVariants'")
+    expect(ipcSource).toContain("logoProjectRemove: 'logoProject:remove'")
+    expect(preloadSource).toContain('removeVariants: (variantIds) =>')
+    expect(preloadSource).toContain('IPC_CHANNELS.generationRemoveVariants, variantIds')
+    expect(preloadSource).toContain(
+      'remove: (id) => ipcRenderer.invoke(IPC_CHANNELS.logoProjectRemove, id)'
+    )
+  })
 })

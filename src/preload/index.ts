@@ -22,6 +22,8 @@ const bloomCanvasApi: BloomCanvasApi = {
     favorite: (generationId, favorite) =>
       ipcRenderer.invoke(IPC_CHANNELS.generationFavorite, generationId, favorite),
     remove: (generationId) => ipcRenderer.invoke(IPC_CHANNELS.generationRemove, generationId),
+    removeVariants: (variantIds) =>
+      ipcRenderer.invoke(IPC_CHANNELS.generationRemoveVariants, variantIds),
     retry: (generationId) => ipcRenderer.invoke(IPC_CHANNELS.generationRetry, generationId)
   },
   prompt: {
@@ -30,7 +32,8 @@ const bloomCanvasApi: BloomCanvasApi = {
   logoProjects: {
     list: () => ipcRenderer.invoke(IPC_CHANNELS.logoProjectList),
     save: (input) => ipcRenderer.invoke(IPC_CHANNELS.logoProjectSave, input),
-    get: (id) => ipcRenderer.invoke(IPC_CHANNELS.logoProjectGet, id)
+    get: (id) => ipcRenderer.invoke(IPC_CHANNELS.logoProjectGet, id),
+    remove: (id) => ipcRenderer.invoke(IPC_CHANNELS.logoProjectRemove, id)
   },
   logoStrategy: {
     generate: (input) => ipcRenderer.invoke(IPC_CHANNELS.logoStrategyGenerate, input)

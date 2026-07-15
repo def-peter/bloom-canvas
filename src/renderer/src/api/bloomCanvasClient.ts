@@ -58,6 +58,8 @@ export const bloomCanvasClient = {
       const remove = requireApiMethod(window.bloomCanvas.generations.remove, '删除历史记录')
       return unwrapResult(remove(generationId))
     },
+    removeVariants: (variantIds: string[]) =>
+      unwrapResult(window.bloomCanvas.generations.removeVariants(variantIds)),
     retry: (generationId: string) =>
       unwrapResult(window.bloomCanvas.generations.retry(generationId))
   },
@@ -69,7 +71,8 @@ export const bloomCanvasClient = {
     list: () => unwrapResult(window.bloomCanvas.logoProjects.list()),
     save: (input: Parameters<typeof window.bloomCanvas.logoProjects.save>[0]) =>
       unwrapResult(window.bloomCanvas.logoProjects.save(input)),
-    get: (id: string) => unwrapResult(window.bloomCanvas.logoProjects.get(id))
+    get: (id: string) => unwrapResult(window.bloomCanvas.logoProjects.get(id)),
+    remove: (id: string) => unwrapResult(window.bloomCanvas.logoProjects.remove(id))
   },
   logoStrategy: {
     generate: (input: Parameters<typeof window.bloomCanvas.logoStrategy.generate>[0]) =>

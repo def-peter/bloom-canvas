@@ -1,9 +1,33 @@
-node_modules
-dist
-out
-.DS_Store
+# Dependencies and package-manager caches
+node_modules/
+.npm/
+.pnpm-store/
+
+# Build and test output
+dist/
+out/
+coverage/
+.nyc_output/
+*.lcov
+*.tsbuildinfo
+
+# Local environment and runtime files
+.env
+.env.*
+!.env.example
+*.pid
+*.pid.lock
+report.*.*.*.*.json
+
+# Tool caches and isolated workspaces
+.cache/
+.vite/
+.worktrees/
 .eslintcache
+.DS_Store
 *.log*
+
+# Local agent state
 .superpowers/
 .codegraph/
 .claude/skills/

@@ -1,8 +1,11 @@
 import type { ProviderConfig } from '../../shared/types'
 
+export type ResponsesContentPart =
+  { type: 'input_text'; text: string } | { type: 'input_image'; image_url: string }
+
 export type ResponsesInputMessage = {
   role: 'system' | 'user'
-  content: string
+  content: string | ResponsesContentPart[]
 }
 
 export class OpenAIResponsesClient {

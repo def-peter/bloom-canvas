@@ -18,6 +18,26 @@ function stubFetch(payload: unknown, status = 200): ReturnType<typeof vi.fn> {
 }
 
 describe('OpenAIResponsesClient', () => {
+  test('sends input_image content without changing text-only calls', async () => {
+    const fetchMock = stubFetch({ output_text: '{"status":"recommended"}' })
+
+    await new OpenAIResponsesClient().createText(logoTestProvider, 'sk-test', [
+      {
+        role: 'user',
+        content: [
+          { type: 'input_text', text: 'Review this mark.' },
+          { type: 'input_image', image_url: 'data:image/png;base64,AA==' }
+        ]
+      }
+    ])
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string)
+    expect(body.input[0].content[1]).toEqual({
+      type: 'input_image',
+      image_url: 'data:image/png;base64,AA=='
+    })
+  })
+
   test('posts the exact Responses request after trimming trailing base URL slashes', async () => {
     const fetchMock = stubFetch({ output_text: 'generated text' })
     const input: ResponsesInputMessage[] = [

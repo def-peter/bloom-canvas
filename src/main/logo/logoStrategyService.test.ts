@@ -10,7 +10,10 @@ import {
   logoTestRevision,
   logoTestSemantics
 } from '../../shared/logoDesign.testFixtures'
-import type { OpenAIResponsesClient } from '../services/openAIResponsesClient'
+import type {
+  OpenAIResponsesClient,
+  ResponsesInputMessage
+} from '../services/openAIResponsesClient'
 import { logoGrammarCards } from './logoGrammarLibrary'
 import { LogoStrategyService } from './logoStrategyService'
 
@@ -117,6 +120,13 @@ function requestMessages(
   return responses.createText.mock.calls[callIndex][2]
 }
 
+function textContent(message: ResponsesInputMessage): string {
+  if (typeof message.content !== 'string') {
+    throw new Error('Expected a text-only strategy request')
+  }
+  return message.content
+}
+
 function outputContract(systemPrompt: string): JsonSchemaNode {
   const match = systemPrompt.match(/MODEL_OUTPUT_SCHEMA_BEGIN\n([\s\S]*?)\nMODEL_OUTPUT_SCHEMA_END/)
   expect(match, 'system prompt must include a complete model output JSON Schema').not.toBeNull()
@@ -199,7 +209,7 @@ describe('LogoStrategyService', () => {
     )
     expect(systemMessage.content).toContain('strategies must contain exactly 3 entries')
 
-    const payload = JSON.parse(userMessage.content) as {
+    const payload = JSON.parse(textContent(userMessage)) as {
       grammarCards: Array<{ id: string; sourceRefs?: string[] }>
     }
     const compatibleCards = logoGrammarCards.filter((card) =>
@@ -210,7 +220,7 @@ describe('LogoStrategyService', () => {
     )
     expect(payload.grammarCards.every((card) => !('sourceRefs' in card))).toBe(true)
     for (const sourceRef of logoGrammarCards.flatMap((card) => card.sourceRefs)) {
-      expect(userMessage.content).not.toContain(sourceRef)
+      expect(textContent(userMessage)).not.toContain(sourceRef)
     }
     expect(JSON.stringify(requestMessages(responses))).not.toContain('sk-test')
   })
@@ -220,7 +230,7 @@ describe('LogoStrategyService', () => {
 
     await new LogoStrategyService(responses).generate(logoTestProvider, 'sk-test', input())
 
-    const contract = outputContract(requestMessages(responses)[0].content)
+    const contract = outputContract(textContent(requestMessages(responses)[0]))
     expect(contract).toMatchObject({
       type: 'object',
       required: ['semantics', 'strategies'],
@@ -330,8 +340,8 @@ describe('LogoStrategyService', () => {
     expect(repairRequest).toContain(originalOutput)
     expect(repairRequest).toContain('JSON parse failed')
     expect(repairRequest).toContain('Rewrite the full strategy set of exactly 3 strategies.')
-    expect(outputContract(requestMessages(responses, 1)[0].content)).toEqual(
-      outputContract(requestMessages(responses)[0].content)
+    expect(outputContract(textContent(requestMessages(responses, 1)[0]))).toEqual(
+      outputContract(textContent(requestMessages(responses)[0]))
     )
   })
 
@@ -436,7 +446,10 @@ describe('LogoStrategyService', () => {
     expect(systemMessage.content).toContain('strategies must contain exactly 1 entry')
     expect(systemMessage.content).toContain('The single strategy id must remain "strategy-frame".')
     expect(userMessage.content).toContain('"replaceStrategyId":"strategy-frame"')
-    const strategiesContract = schemaProperty(outputContract(systemMessage.content), 'strategies')
+    const strategiesContract = schemaProperty(
+      outputContract(textContent(systemMessage)),
+      'strategies'
+    )
     expect(strategiesContract).toMatchObject({ type: 'array', minItems: 1, maxItems: 1 })
     expect(strategiesContract.items?.properties).not.toHaveProperty('version')
   })

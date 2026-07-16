@@ -203,6 +203,41 @@ export const logoPromptPackSchema = z.object({
   directions: z.array(logoPromptDirectionSchema).min(1).max(4)
 })
 
+export const logoReviewScoresSchema = z.object({
+  strategyFit: z.number().min(0).max(100),
+  distinctiveness: z.number().min(0).max(100),
+  simplicity: z.number().min(0).max(100),
+  smallSizePotential: z.number().min(0).max(100),
+  craft: z.number().min(0).max(100)
+})
+
+const logoReviewTextListSchema = z.array(z.string().trim().min(1).max(240)).max(12)
+
+export const logoCandidateReviewSchema = z.discriminatedUnion('reviewMode', [
+  z
+    .object({
+      candidateId: z.string().min(1),
+      status: z.enum(['recommended', 'adjustable', 'not-recommended']),
+      reviewMode: z.literal('vision-model'),
+      scores: logoReviewScoresSchema,
+      hardFailures: logoReviewTextListSchema,
+      risksZh: logoReviewTextListSchema,
+      suggestedRevisionZh: z.string().trim().min(1).max(600).optional(),
+      revisionInstructionEn: z.string().trim().min(1).max(1200).optional()
+    })
+    .strict(),
+  z
+    .object({
+      candidateId: z.string().min(1),
+      status: z.literal('unreviewed'),
+      reviewMode: z.literal('local-only'),
+      hardFailures: logoReviewTextListSchema,
+      risksZh: logoReviewTextListSchema,
+      unavailableReasonZh: z.string().trim().min(1).max(400)
+    })
+    .strict()
+])
+
 export const saveLogoProjectSchema = z.object({
   id: z.string().min(1).optional(),
   briefVersion: z.number().int().positive().optional(),
@@ -234,7 +269,8 @@ export const saveLogoProjectSchema = z.object({
   generationMode: z.enum(['quality-first', 'economy']).optional(),
   aiReviewEnabled: z.boolean().optional(),
   autoQualityRetry: z.boolean().optional(),
-  selectedCandidateId: z.string().min(1).optional()
+  selectedCandidateId: z.string().min(1).optional(),
+  candidateReviews: z.record(z.string().min(1), logoCandidateReviewSchema).optional()
 })
 
 export const buildLogoPromptPackSchema = saveLogoProjectSchema.extend({
@@ -283,7 +319,11 @@ export const logoGenerationMetadataV2Schema = z.object({
   briefSnapshot: logoBrandBriefV2Schema,
   qualityRulesVersion: z.literal(2),
   qualityRetryAttempt: z.union([z.literal(0), z.literal(1)]),
-  parentVariantId: z.string().min(1).optional()
+  parentVariantId: z.string().min(1).optional(),
+  refinementMode: z.enum(['preserve-structure', 'explore']).optional(),
+  refinementOperation: z
+    .enum(['custom', 'add-brand-name', 'horizontal-lockup', 'application-style', 'monochrome'])
+    .optional()
 })
 
 export const logoGenerationMetadataSchema = z.union([

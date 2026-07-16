@@ -182,6 +182,7 @@ export class LogoProjectService {
       aiReviewEnabled: input.aiReviewEnabled ?? existing?.aiReviewEnabled ?? true,
       autoQualityRetry: input.autoQualityRetry ?? existing?.autoQualityRetry ?? true,
       selectedCandidateId: input.selectedCandidateId ?? existing?.selectedCandidateId,
+      candidateReviews: input.candidateReviews ?? existing?.candidateReviews ?? {},
       generationIds: existing?.generationIds ?? [],
       favoriteVariantIds: existing?.favoriteVariantIds ?? [],
       createdAt: existing?.createdAt ?? now,

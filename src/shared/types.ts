@@ -1,8 +1,11 @@
 import type {
   LogoBrandBriefV2,
+  LogoCandidateReview,
   LogoDesignRevision,
   LogoGenerationMode,
   LogoGrammarId,
+  LogoRefinementMode,
+  LogoRefinementOperation,
   LogoStrategyPromptDirection,
   LogoStrategyPromptPack,
   LogoType,
@@ -132,6 +135,7 @@ export interface LogoProject {
   aiReviewEnabled?: boolean
   autoQualityRetry?: boolean
   selectedCandidateId?: VariantId
+  candidateReviews?: Record<string, LogoCandidateReview>
   generationIds: GenerationId[]
   favoriteVariantIds: VariantId[]
   createdAt: string
@@ -181,6 +185,8 @@ export interface LogoGenerationMetadataV2 {
   qualityRulesVersion: 2
   qualityRetryAttempt: 0 | 1
   parentVariantId?: VariantId
+  refinementMode?: LogoRefinementMode
+  refinementOperation?: LogoRefinementOperation
 }
 
 export type LogoGenerationMetadata = LogoGenerationMetadataV1 | LogoGenerationMetadataV2
@@ -277,6 +283,7 @@ export interface SaveLogoProjectInput {
   aiReviewEnabled?: boolean
   autoQualityRetry?: boolean
   selectedCandidateId?: VariantId
+  candidateReviews?: Record<string, LogoCandidateReview>
 }
 
 export interface BuildLogoPromptPackInput extends SaveLogoProjectInput {

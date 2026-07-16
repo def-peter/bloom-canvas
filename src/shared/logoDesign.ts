@@ -32,6 +32,77 @@ export type LogoRenderStyle =
 export type LogoWorkflowStep = 'brief' | 'strategy' | 'generation' | 'refinement'
 export type LogoGenerationMode = 'quality-first' | 'economy'
 
+export interface LogoLocalCheck {
+  decodable: boolean
+  blank: boolean
+  lowContrast: boolean
+  width: number
+  height: number
+}
+
+export interface LogoPreviewSet {
+  assetId: string
+  localCheck: LogoLocalCheck
+  whiteBackgroundDataUrl: string
+  blackBackgroundDataUrl: string
+  size64DataUrl: string
+  size32DataUrl: string
+  grayscaleDataUrl: string
+  monochromeDataUrl: string
+  inverseDataUrl: string
+}
+
+export type LogoReviewStatus = 'recommended' | 'adjustable' | 'not-recommended' | 'unreviewed'
+
+export interface LogoReviewScores {
+  strategyFit: number
+  distinctiveness: number
+  simplicity: number
+  smallSizePotential: number
+  craft: number
+}
+
+export type LogoCandidateReview =
+  | {
+      candidateId: string
+      status: Exclude<LogoReviewStatus, 'unreviewed'>
+      reviewMode: 'vision-model'
+      scores: LogoReviewScores
+      hardFailures: string[]
+      risksZh: string[]
+      suggestedRevisionZh?: string
+      revisionInstructionEn?: string
+    }
+  | {
+      candidateId: string
+      status: 'unreviewed'
+      reviewMode: 'local-only'
+      hardFailures: string[]
+      risksZh: string[]
+      unavailableReasonZh: string
+    }
+
+export interface ReviewLogoCandidateInput {
+  providerId: string
+  projectId: string
+  variantId: string
+  useVision: boolean
+}
+
+export type LogoRefinementMode = 'preserve-structure' | 'explore'
+export type LogoRefinementOperation =
+  'custom' | 'add-brand-name' | 'horizontal-lockup' | 'application-style' | 'monochrome'
+
+export interface BuildLogoRefinementPromptInput {
+  brief: LogoBrandBriefV2
+  strategy: LogoDesignStrategy
+  sourcePrompt: LogoStrategyPromptDirection
+  mode: LogoRefinementMode
+  operation: LogoRefinementOperation
+  instruction: string
+  renderStyle?: LogoRenderStyle
+}
+
 export interface LogoBrandBriefV2 {
   brandName: string
   brandNameAlt?: string

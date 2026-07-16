@@ -5,6 +5,7 @@ import {
   buildLogoPromptPackSchema,
   createGenerationSchema,
   generationParametersSchema,
+  logoCandidateReviewSchema,
   logoDesignRevisionSchema,
   logoPromptPackSchema,
   logoStrategyPromptPackSchema,
@@ -63,6 +64,60 @@ const validStrategy = {
 } as const
 
 describe('logo schemas', () => {
+  test('accepts a scored vision review', () => {
+    const review = logoCandidateReviewSchema.parse({
+      candidateId: 'variant-1',
+      status: 'recommended',
+      reviewMode: 'vision-model',
+      scores: {
+        strategyFit: 86,
+        distinctiveness: 78,
+        simplicity: 91,
+        smallSizePotential: 84,
+        craft: 80
+      },
+      hardFailures: [],
+      risksZh: ['内侧转角可以更统一'],
+      suggestedRevisionZh: '统一转角半径。',
+      revisionInstructionEn: 'Use one consistent corner radius.'
+    })
+
+    expect(review.scores?.simplicity).toBe(91)
+  })
+
+  test('accepts local-only review without fake scores', () => {
+    const review = logoCandidateReviewSchema.parse({
+      candidateId: 'variant-1',
+      status: 'unreviewed',
+      reviewMode: 'local-only',
+      hardFailures: [],
+      risksZh: [],
+      unavailableReasonZh: '当前供应商未执行 AI 视觉评审'
+    })
+
+    expect(review.scores).toBeUndefined()
+  })
+
+  test('rejects local-only review with aesthetic scores', () => {
+    expect(() =>
+      logoCandidateReviewSchema.parse({
+        candidateId: 'variant-1',
+        status: 'unreviewed',
+        reviewMode: 'local-only',
+        scores: {
+          strategyFit: 50,
+          distinctiveness: 50,
+          simplicity: 50,
+          smallSizePotential: 50,
+          craft: 50
+        },
+        hardFailures: [],
+        risksZh: [],
+        unavailableReasonZh: '当前供应商未执行 AI 视觉评审'
+      })
+    ).toThrow()
+  })
+
   test('accepts a complete three-strategy design revision', () => {
     const revision = logoDesignRevisionSchema.parse({
       briefVersion: 1,

@@ -199,6 +199,34 @@ describe('LogoProjectService', () => {
     expect(persisted).toEqual(created)
   })
 
+  test('preserves candidate reviews when a form save omits them', async () => {
+    const candidateReviews = {
+      'variant-1': {
+        candidateId: 'variant-1',
+        status: 'recommended' as const,
+        reviewMode: 'vision-model' as const,
+        scores: {
+          strategyFit: 86,
+          distinctiveness: 78,
+          simplicity: 91,
+          smallSizePotential: 84,
+          craft: 80
+        },
+        hardFailures: [],
+        risksZh: []
+      }
+    }
+    const created = await service.save(v2ProjectInput({ candidateReviews }))
+
+    const updated = await service.save({
+      ...created,
+      candidateReviews: undefined,
+      differentiator: '更新后的差异点'
+    })
+
+    expect(updated.candidateReviews).toEqual(candidateReviews)
+  })
+
   test('increments brief and prompt versions for business changes while retaining stale artifacts', async () => {
     const created = await service.save(
       v2ProjectInput({

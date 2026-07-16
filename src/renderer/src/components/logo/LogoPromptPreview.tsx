@@ -17,7 +17,6 @@ export function LogoPromptPreview({
         <Input.TextArea autoSize={{ minRows: 4, maxRows: 8 }} />
       </Form.Item>
       <Collapse
-        defaultActiveKey={promptPack.directions.map((direction) => direction.id)}
         items={promptPack.directions.map((direction, index) => ({
           children: (
             <>
@@ -38,7 +37,6 @@ export function LogoPromptPreview({
               </Form.Item>
             </>
           ),
-          forceRender: true,
           key: direction.id,
           label: direction.name
         }))}

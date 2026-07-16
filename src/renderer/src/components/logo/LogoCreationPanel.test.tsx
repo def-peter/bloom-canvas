@@ -154,7 +154,10 @@ describe('LogoCreationPanel', () => {
     fireEvent.click(screen.getByText('生成/更新提示词'))
 
     await waitFor(() => expect(screen.getByText('提示词预览')).toBeInTheDocument())
-    expect(screen.getAllByDisplayValue(/base prompt/)).not.toHaveLength(0)
+    expect(
+      screen.getByDisplayValue('base prompt simple scalable logo works at 32px')
+    ).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('base prompt\nmodern prompt')).not.toBeInTheDocument()
   })
 
   test('saves one primary logo type from the selected radio choice', async () => {

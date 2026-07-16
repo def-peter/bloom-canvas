@@ -173,7 +173,10 @@ describe('GenerationService', () => {
 
     expect(record.scenario).toBe('logo-design')
     expect(record.projectId).toBe('project-1')
-    expect(record.scenarioMetadata?.styleDirectionId).toBe('modern-minimal')
+    expect(record.scenarioMetadata?.version).not.toBe(2)
+    if (record.scenarioMetadata?.version !== 2) {
+      expect(record.scenarioMetadata?.styleDirectionId).toBe('modern-minimal')
+    }
     expect(record.promptFinal).toBe('final logo prompt')
   })
 
@@ -225,7 +228,10 @@ describe('GenerationService', () => {
 
     expect(imageProvider.requests.at(-1)?.prompt).toBe('final logo prompt')
     expect(retryRecord.scenario).toBe('logo-design')
-    expect(retryRecord.scenarioMetadata?.styleDirectionId).toBe('modern-minimal')
+    expect(retryRecord.scenarioMetadata?.version).not.toBe(2)
+    if (retryRecord.scenarioMetadata?.version !== 2) {
+      expect(retryRecord.scenarioMetadata?.styleDirectionId).toBe('modern-minimal')
+    }
   })
 
   it('removes a generation, output assets, variants, and logo project references', async () => {

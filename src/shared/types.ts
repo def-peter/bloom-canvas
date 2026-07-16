@@ -1,8 +1,13 @@
 import type {
+  LogoBrandBriefV2,
   LogoDesignRevision,
+  LogoGenerationMode,
+  LogoGrammarId,
+  LogoStrategyPromptDirection,
   LogoStrategyPromptPack,
   LogoType,
-  LogoUsageScenario
+  LogoUsageScenario,
+  LogoWorkflowStep
 } from './logoDesign'
 import type { GenerationSize } from './imageSize'
 
@@ -122,6 +127,11 @@ export interface LogoProject {
   promptPack?: LogoPromptPack
   designRevision?: LogoDesignRevision
   strategyPromptPack?: LogoStrategyPromptPack
+  workflowStep?: LogoWorkflowStep
+  generationMode?: LogoGenerationMode
+  aiReviewEnabled?: boolean
+  autoQualityRetry?: boolean
+  selectedCandidateId?: VariantId
   generationIds: GenerationId[]
   favoriteVariantIds: VariantId[]
   createdAt: string
@@ -145,7 +155,8 @@ export interface LogoBriefSnapshot {
   referenceNote?: string
 }
 
-export interface LogoGenerationMetadata {
+export interface LogoGenerationMetadataV1 {
+  version?: 1
   logoProjectId: LogoProjectId
   styleDirectionId: LogoStyleDirectionId
   styleDirectionName: string
@@ -155,6 +166,24 @@ export interface LogoGenerationMetadata {
   briefSnapshot: LogoBriefSnapshot
   qualityRulesVersion: 1
 }
+
+export interface LogoGenerationMetadataV2 {
+  version: 2
+  logoProjectId: LogoProjectId
+  strategyId: string
+  strategyNameZh: string
+  grammarId: LogoGrammarId
+  candidateIndex: number
+  logoType: LogoType
+  designRevisionSnapshot: LogoDesignRevision
+  promptDirectionSnapshot: LogoStrategyPromptDirection
+  briefSnapshot: LogoBrandBriefV2
+  qualityRulesVersion: 2
+  qualityRetryAttempt: 0 | 1
+  parentVariantId?: VariantId
+}
+
+export type LogoGenerationMetadata = LogoGenerationMetadataV1 | LogoGenerationMetadataV2
 
 export interface Generation {
   id: GenerationId
@@ -243,6 +272,11 @@ export interface SaveLogoProjectInput {
   promptPack?: LogoPromptPack
   designRevision?: LogoDesignRevision
   strategyPromptPack?: LogoStrategyPromptPack
+  workflowStep?: LogoWorkflowStep
+  generationMode?: LogoGenerationMode
+  aiReviewEnabled?: boolean
+  autoQualityRetry?: boolean
+  selectedCandidateId?: VariantId
 }
 
 export interface BuildLogoPromptPackInput extends SaveLogoProjectInput {

@@ -476,6 +476,10 @@ describe('LogoProjectService', () => {
     expect(project.preferredColors).toEqual([])
     expect(project.generationIds).toEqual([])
     expect(project.promptPack?.directions[0].id).toBe('modern-minimal')
+    expect(project.workflowStep).toBe('brief')
+    expect(project.generationMode).toBe('quality-first')
+    expect(project.aiReviewEnabled).toBe(true)
+    expect(project.autoQualityRetry).toBe(true)
   })
 
   test('updates an existing project without losing generation ids', async () => {

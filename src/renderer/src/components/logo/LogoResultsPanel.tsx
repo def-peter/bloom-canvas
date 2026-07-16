@@ -18,7 +18,11 @@ interface LogoResultsPanelProps {
 
 function groupByDirection(generations: GenerationRecord[]): Record<string, GenerationRecord[]> {
   return generations.reduce<Record<string, GenerationRecord[]>>((groups, generation) => {
-    const key = generation.scenarioMetadata?.styleDirectionName ?? '未分类方向'
+    const metadata = generation.scenarioMetadata
+    const key =
+      metadata?.version === 2
+        ? metadata.strategyNameZh
+        : (metadata?.styleDirectionName ?? '未分类方向')
     groups[key] = [...(groups[key] ?? []), generation]
     return groups
   }, {})

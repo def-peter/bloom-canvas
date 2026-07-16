@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'vitest'
-import { logoTestPromptPack } from './logoDesign.testFixtures'
+import {
+  logoTestBrief,
+  logoTestPromptPack,
+  logoTestRevision
+} from './logoDesign.testFixtures'
 import type { LogoStrategyPromptPack } from './logoDesign'
 import {
   buildLogoPromptPackSchema,
@@ -250,5 +254,41 @@ describe('logo schemas', () => {
     })
 
     expect(input.scenario).toBe('logo-design')
+  })
+
+  test('accepts a V2 logo generation snapshot', () => {
+    const input = createGenerationSchema.parse({
+      providerId: 'provider-1',
+      prompt: 'Create exactly one standalone logo mark.',
+      useOptimizedPrompt: false,
+      referenceAssetIds: [],
+      parameters: {
+        size: '1024x1024',
+        count: 1,
+        quality: 'hd',
+        outputFormat: 'png'
+      },
+      scenario: 'logo-design',
+      projectId: 'project-1',
+      scenarioMetadata: {
+        version: 2,
+        logoProjectId: 'project-1',
+        strategyId: 'strategy-path',
+        strategyNameZh: '连续创作路径',
+        grammarId: 'continuous-path',
+        candidateIndex: 0,
+        logoType: 'combination-mark',
+        designRevisionSnapshot: logoTestRevision,
+        promptDirectionSnapshot: logoTestPromptPack.directions[0],
+        briefSnapshot: logoTestBrief,
+        qualityRulesVersion: 2,
+        qualityRetryAttempt: 0
+      }
+    })
+
+    expect(input.scenarioMetadata).toMatchObject({
+      version: 2,
+      strategyId: 'strategy-path'
+    })
   })
 })

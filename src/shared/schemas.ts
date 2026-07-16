@@ -229,7 +229,12 @@ export const saveLogoProjectSchema = z.object({
   referenceNote: z.string().trim().max(600).optional(),
   promptPack: logoPromptPackSchema.optional(),
   designRevision: logoDesignRevisionSchema.optional(),
-  strategyPromptPack: logoStrategyPromptPackSchema.optional()
+  strategyPromptPack: logoStrategyPromptPackSchema.optional(),
+  workflowStep: z.enum(['brief', 'strategy', 'generation', 'refinement']).optional(),
+  generationMode: z.enum(['quality-first', 'economy']).optional(),
+  aiReviewEnabled: z.boolean().optional(),
+  autoQualityRetry: z.boolean().optional(),
+  selectedCandidateId: z.string().min(1).optional()
 })
 
 export const buildLogoPromptPackSchema = saveLogoProjectSchema.extend({
@@ -253,7 +258,8 @@ export const logoBriefSnapshotSchema = z.object({
   referenceNote: z.string().trim().optional()
 })
 
-export const logoGenerationMetadataSchema = z.object({
+export const logoGenerationMetadataV1Schema = z.object({
+  version: z.literal(1).optional(),
   logoProjectId: z.string().min(1),
   styleDirectionId: logoStyleDirectionSchema,
   styleDirectionName: z.string().trim().min(1),
@@ -263,6 +269,27 @@ export const logoGenerationMetadataSchema = z.object({
   briefSnapshot: logoBriefSnapshotSchema,
   qualityRulesVersion: z.literal(1)
 })
+
+export const logoGenerationMetadataV2Schema = z.object({
+  version: z.literal(2),
+  logoProjectId: z.string().min(1),
+  strategyId: z.string().trim().min(1).max(80),
+  strategyNameZh: z.string().trim().min(1).max(40),
+  grammarId: logoGrammarIdSchema,
+  candidateIndex: z.number().int().min(0).max(1),
+  logoType: logoTypeSchema,
+  designRevisionSnapshot: logoDesignRevisionSchema,
+  promptDirectionSnapshot: logoStrategyPromptDirectionSchema,
+  briefSnapshot: logoBrandBriefV2Schema,
+  qualityRulesVersion: z.literal(2),
+  qualityRetryAttempt: z.union([z.literal(0), z.literal(1)]),
+  parentVariantId: z.string().min(1).optional()
+})
+
+export const logoGenerationMetadataSchema = z.union([
+  logoGenerationMetadataV1Schema,
+  logoGenerationMetadataV2Schema
+])
 
 export const saveProviderSchema = z.object({
   id: z.string().min(1).optional(),

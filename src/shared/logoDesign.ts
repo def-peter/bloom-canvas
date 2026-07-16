@@ -29,6 +29,9 @@ export type LogoRenderStyle =
   | 'embossed'
   | 'skeuomorphic'
 
+export type LogoWorkflowStep = 'brief' | 'strategy' | 'generation' | 'refinement'
+export type LogoGenerationMode = 'quality-first' | 'economy'
+
 export interface LogoBrandBriefV2 {
   brandName: string
   brandNameAlt?: string

@@ -1,0 +1,237 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { App } from 'antd'
+import type { ComponentProps } from 'react'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
+import {
+  logoTestBrief,
+  logoTestPromptPack,
+  logoTestProvider,
+  logoTestRevision
+} from '../../../../shared/logoDesign.testFixtures'
+import type { CreateGenerationInput, GenerationRecord, LogoProject } from '../../../../shared/types'
+import { bloomCanvasClient } from '../../api/bloomCanvasClient'
+import { LogoWorkflowPanel } from './LogoWorkflowPanel'
+
+vi.mock('../../api/bloomCanvasClient', () => ({
+  bloomCanvasClient: {
+    generations: {
+      create: vi.fn()
+    },
+    logoProjects: {
+      save: vi.fn()
+    },
+    logoStrategy: {
+      generate: vi.fn()
+    },
+    logoPrompt: {
+      buildStrategy: vi.fn()
+    }
+  }
+}))
+
+const project: LogoProject = {
+  id: 'project-1',
+  briefVersion: 1,
+  promptVersion: 1,
+  brandName: '生花',
+  industry: 'AI 绘图软件',
+  businessDescription: '帮助创作者把想法转化为图片',
+  targetAudience: '个人创作者',
+  brandKeywords: ['清晰', '创造力'],
+  differentiator: '轻量、直接的创作流程',
+  avoidElements: '复杂花瓣',
+  avoidedElements: ['复杂花瓣'],
+  preferredColors: ['蓝色'],
+  avoidedColors: [],
+  logoTypes: ['combination-mark'],
+  styleDirections: [],
+  usageScenarios: ['app-icon', 'website'],
+  referenceImageIds: [],
+  workflowStep: 'brief',
+  generationMode: 'quality-first',
+  aiReviewEnabled: true,
+  autoQualityRetry: true,
+  generationIds: [],
+  favoriteVariantIds: [],
+  createdAt: '2026-07-13T00:00:00.000Z',
+  updatedAt: '2026-07-13T00:00:00.000Z'
+}
+
+const generationWithCandidate: GenerationRecord = {
+  ...generationRecordFromInput(
+    {
+      providerId: logoTestProvider.id,
+      prompt: logoTestPromptPack.directions[0].finalPrompt,
+      useOptimizedPrompt: false,
+      referenceAssetIds: [],
+      parameters: {
+        size: '1024x1024',
+        count: 1,
+        quality: 'hd',
+        outputFormat: 'png'
+      },
+      scenario: 'logo-design',
+      projectId: project.id,
+      scenarioMetadata: {
+        version: 2,
+        logoProjectId: project.id,
+        strategyId: logoTestRevision.strategies[0].id,
+        strategyNameZh: logoTestRevision.strategies[0].nameZh,
+        grammarId: logoTestRevision.strategies[0].grammarId,
+        candidateIndex: 0,
+        logoType: 'combination-mark',
+        designRevisionSnapshot: logoTestRevision,
+        promptDirectionSnapshot: logoTestPromptPack.directions[0],
+        briefSnapshot: logoTestBrief,
+        qualityRulesVersion: 2,
+        qualityRetryAttempt: 0
+      }
+    },
+    1
+  ),
+  outputVariantIds: ['variant-1'],
+  variants: [
+    {
+      id: 'variant-1',
+      generationId: 'generation-1',
+      assetId: 'asset-1',
+      index: 0,
+      favorite: false,
+      createdAt: '2026-07-13T00:00:00.000Z',
+      asset: {
+        id: 'asset-1',
+        type: 'output',
+        filePath: '/tmp/logo.png',
+        thumbnailPath: '/tmp/logo-thumb.png',
+        mimeType: 'image/png',
+        width: 1024,
+        height: 1024,
+        size: 1024,
+        sha256: 'hash',
+        createdAt: '2026-07-13T00:00:00.000Z',
+        sourceGenerationId: 'generation-1'
+      }
+    }
+  ]
+}
+
+function generationRecordFromInput(input: CreateGenerationInput, index: number): GenerationRecord {
+  return {
+    id: `generation-${index}`,
+    mode: 'text-to-image',
+    scenario: input.scenario,
+    projectId: input.projectId,
+    scenarioMetadata: input.scenarioMetadata,
+    promptOriginal: input.prompt,
+    promptFinal: input.prompt,
+    referenceImageIds: input.referenceAssetIds,
+    parameters: input.parameters,
+    outputVariantIds: [],
+    providerId: input.providerId,
+    status: 'succeeded',
+    favorite: false,
+    createdAt: '2026-07-13T00:00:00.000Z',
+    updatedAt: '2026-07-13T00:00:00.000Z',
+    references: [],
+    variants: []
+  }
+}
+
+function renderWorkflow(overrides: Partial<ComponentProps<typeof LogoWorkflowPanel>> = {}): void {
+  render(
+    <App>
+      <LogoWorkflowPanel
+        activeProvider={logoTestProvider}
+        generations={[]}
+        project={project}
+        settings={null}
+        onCreated={vi.fn()}
+        onContinueEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onDeleteVariants={vi.fn()}
+        onError={vi.fn()}
+        onExport={vi.fn()}
+        onGeneratingChange={vi.fn()}
+        onNeedProvider={vi.fn()}
+        onProjectSaved={vi.fn()}
+        onRetry={vi.fn()}
+        {...overrides}
+      />
+    </App>
+  )
+}
+
+describe('LogoWorkflowPanel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(bloomCanvasClient.logoProjects.save).mockImplementation(async (input) => ({
+      ...project,
+      ...input,
+      id: input.id ?? project.id,
+      briefVersion: project.briefVersion,
+      promptVersion: project.promptVersion,
+      styleDirections: input.styleDirections ?? [],
+      usageScenarios: input.usageScenarios ?? [],
+      preferredColors: input.preferredColors ?? [],
+      avoidedColors: input.avoidedColors ?? [],
+      generationIds: project.generationIds,
+      favoriteVariantIds: project.favoriteVariantIds,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt
+    }))
+    vi.mocked(bloomCanvasClient.logoStrategy.generate).mockResolvedValue(logoTestRevision)
+    vi.mocked(bloomCanvasClient.logoPrompt.buildStrategy).mockResolvedValue(logoTestPromptPack)
+    vi.mocked(bloomCanvasClient.generations.create).mockImplementation(async (input) =>
+      generationRecordFromInput(
+        input,
+        vi.mocked(bloomCanvasClient.generations.create).mock.calls.length
+      )
+    )
+  })
+
+  test('moves from brief to strategies and generates six independent requests', async () => {
+    renderWorkflow()
+
+    fireEvent.click(screen.getByRole('button', { name: '生成创意策略' }))
+    expect(await screen.findByText('连续创作路径')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '生成 Logo 初稿' }))
+
+    await waitFor(() => expect(bloomCanvasClient.generations.create).toHaveBeenCalledTimes(6))
+    for (const [input] of vi.mocked(bloomCanvasClient.generations.create).mock.calls) {
+      expect(input.parameters.count).toBe(1)
+      expect(input.scenarioMetadata?.version).toBe(2)
+    }
+  })
+
+  test('does not use a stale revision after the brief changes', () => {
+    renderWorkflow({
+      project: {
+        ...project,
+        briefVersion: 2,
+        workflowStep: 'strategy',
+        designRevision: logoTestRevision,
+        strategyPromptPack: logoTestPromptPack
+      }
+    })
+
+    expect(screen.getByText('上游信息已变化，请重新确认提示词')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '生成 Logo 初稿' })).toBeDisabled()
+  })
+
+  test('continues editing the selected candidate from the refinement step', () => {
+    const onContinueEdit = vi.fn()
+    renderWorkflow({
+      generations: [generationWithCandidate],
+      onContinueEdit,
+      project: {
+        ...project,
+        selectedCandidateId: 'variant-1',
+        workflowStep: 'refinement'
+      }
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '继续修改' }))
+
+    expect(onContinueEdit).toHaveBeenCalledWith(generationWithCandidate.variants[0].asset)
+  })
+})

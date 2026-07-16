@@ -25,7 +25,14 @@ export interface LogoBriefFormValues {
 }
 
 export function splitLogoTags(value: string): string[] {
-  return [...new Set(value.split(/[,，、\n]+/).map((item) => item.trim()).filter(Boolean))]
+  return [
+    ...new Set(
+      value
+        .split(/[,，、\n]+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  ]
 }
 
 function normalizeTags(values: string[] | undefined): string[] {
@@ -42,8 +49,7 @@ export function projectToBriefValues(project: LogoProject | null): LogoBriefForm
     targetAudience: project?.targetAudience,
     brandKeywords: project?.brandKeywords ?? [],
     differentiator: project?.differentiator,
-    avoidedElements:
-      project?.avoidedElements ?? splitLogoTags(project?.avoidElements ?? ''),
+    avoidedElements: project?.avoidedElements ?? splitLogoTags(project?.avoidElements ?? ''),
     preferredColors: project?.preferredColors ?? [],
     avoidedColors: project?.avoidedColors ?? [],
     logoType: project?.logoTypes[0] ?? 'combination-mark',
@@ -122,9 +128,9 @@ export function isPromptDirectionCurrent(
   )
   return Boolean(
     strategy &&
-      direction.sourceBriefVersion === (project.briefVersion ?? 1) &&
-      direction.sourcePromptVersion === (project.promptVersion ?? 1) &&
-      direction.sourceStrategyVersion === strategy.version
+    direction.sourceBriefVersion === (project.briefVersion ?? 1) &&
+    direction.sourcePromptVersion === (project.promptVersion ?? 1) &&
+    direction.sourceStrategyVersion === strategy.version
   )
 }
 
@@ -134,8 +140,12 @@ export function mergeRecompiledPromptPack(
   changedStrategyIds: string[]
 ): LogoStrategyPromptPack {
   const changed = new Set(changedStrategyIds)
-  const previousById = new Map(previous.directions.map((direction) => [direction.strategyId, direction]))
-  const rebuiltById = new Map(rebuilt.directions.map((direction) => [direction.strategyId, direction]))
+  const previousById = new Map(
+    previous.directions.map((direction) => [direction.strategyId, direction])
+  )
+  const rebuiltById = new Map(
+    rebuilt.directions.map((direction) => [direction.strategyId, direction])
+  )
 
   for (const strategyId of changed) {
     if (!rebuiltById.has(strategyId)) {

@@ -47,9 +47,7 @@ export function LogoGenerationStep({
     <section className="logo-workflow-step logo-generation-step">
       <div className="logo-step-heading">
         <Typography.Title level={4}>生成与筛选</Typography.Title>
-        <Typography.Text type="secondary">
-          每个策略独立生成，成功结果会立即保留。
-        </Typography.Text>
+        <Typography.Text type="secondary">每个策略独立生成，成功结果会立即保留。</Typography.Text>
       </div>
       <div className="logo-generation-controls">
         <Segmented
@@ -92,7 +90,11 @@ export function LogoGenerationStep({
                   percent={Math.round((completed / strategyItems.length) * 100)}
                   showInfo={false}
                   size="small"
-                  status={failed.length > 0 && completed === strategyItems.length ? 'exception' : undefined}
+                  status={
+                    failed.length > 0 && completed === strategyItems.length
+                      ? 'exception'
+                      : undefined
+                  }
                 />
                 {failed.map((item) => (
                   <Alert

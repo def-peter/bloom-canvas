@@ -22,6 +22,7 @@ import type {
 interface LogoStrategyStepProps {
   revision: LogoDesignRevision
   promptPack: LogoStrategyPromptPack
+  stale?: boolean
   loadingStrategyId: string | null
   onChangePrompt: (strategyId: string, finalPrompt: string) => void
   onChangeRenderStyle: (strategyId: string, style: LogoRenderStyle) => void
@@ -65,9 +66,9 @@ function isPromptPackCurrent(
     const direction = promptPack.directions.find((item) => item.strategyId === strategyId)
     return Boolean(
       strategy &&
-        direction &&
-        direction.sourceBriefVersion === revision.briefVersion &&
-        direction.sourceStrategyVersion === strategy.version
+      direction &&
+      direction.sourceBriefVersion === revision.briefVersion &&
+      direction.sourceStrategyVersion === strategy.version
     )
   })
 }
@@ -75,6 +76,7 @@ function isPromptPackCurrent(
 export function LogoStrategyStep({
   revision,
   promptPack,
+  stale = false,
   loadingStrategyId,
   onChangePrompt,
   onChangeRenderStyle,
@@ -83,7 +85,7 @@ export function LogoStrategyStep({
   onGenerate
 }: LogoStrategyStepProps): React.JSX.Element {
   const [draft, setDraft] = useState<StrategyDraft | null>(null)
-  const promptCurrent = isPromptPackCurrent(revision, promptPack)
+  const promptCurrent = !stale && isPromptPackCurrent(revision, promptPack)
   const strategies = revision.strategies.filter((strategy) =>
     revision.selectedStrategyIds.includes(strategy.id)
   )
@@ -121,25 +123,17 @@ export function LogoStrategyStep({
         </Typography.Text>
       </div>
       {!promptCurrent ? (
-        <Alert
-          showIcon
-          title="上游信息已变化，请重新确认提示词"
-          type="warning"
-        />
+        <Alert showIcon title="上游信息已变化，请重新确认提示词" type="warning" />
       ) : null}
       <div className="logo-strategy-grid">
         {strategies.map((strategy) => {
-          const direction = promptPack.directions.find(
-            (item) => item.strategyId === strategy.id
-          )
+          const direction = promptPack.directions.find((item) => item.strategyId === strategy.id)
           return (
             <article className="logo-strategy-card" key={strategy.id}>
               <div className="logo-strategy-card-header">
                 <div>
                   <Typography.Title level={5}>{strategy.nameZh}</Typography.Title>
-                  <Typography.Paragraph type="secondary">
-                    {strategy.summaryZh}
-                  </Typography.Paragraph>
+                  <Typography.Paragraph type="secondary">{strategy.summaryZh}</Typography.Paragraph>
                 </div>
                 <Space.Compact>
                   <Tooltip title="调整这个策略">
@@ -203,9 +197,7 @@ export function LogoStrategyStep({
                           aria-label={`图片提示词：${strategy.nameZh}`}
                           autoSize={{ minRows: 7, maxRows: 14 }}
                           value={direction.finalPrompt}
-                          onChange={(event) =>
-                            onChangePrompt(strategy.id, event.target.value)
-                          }
+                          onChange={(event) => onChangePrompt(strategy.id, event.target.value)}
                         />
                       )
                     }

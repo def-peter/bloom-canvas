@@ -1,8 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import {
-  logoTestPromptPack,
-  logoTestRevision
-} from '../../../../shared/logoDesign.testFixtures'
+import { logoTestPromptPack, logoTestRevision } from '../../../../shared/logoDesign.testFixtures'
 import type { LogoProject } from '../../../../shared/types'
 import {
   isDesignRevisionCurrent,
@@ -49,12 +46,12 @@ describe('logoFormUtils', () => {
   })
 
   test('marks a revision stale when its brief version differs', () => {
-    expect(
-      isDesignRevisionCurrent({ briefVersion: 2, designRevision: logoTestRevision })
-    ).toBe(false)
-    expect(
-      isDesignRevisionCurrent({ briefVersion: 1, designRevision: logoTestRevision })
-    ).toBe(true)
+    expect(isDesignRevisionCurrent({ briefVersion: 2, designRevision: logoTestRevision })).toBe(
+      false
+    )
+    expect(isDesignRevisionCurrent({ briefVersion: 1, designRevision: logoTestRevision })).toBe(
+      true
+    )
   })
 
   test('recompiles only the changed strategy and preserves another custom prompt', () => {
@@ -76,9 +73,9 @@ describe('logoFormUtils', () => {
     }
 
     const merged = mergeRecompiledPromptPack(previous, rebuilt, ['strategy-path'])
-    expect(
-      merged.directions.find((item) => item.strategyId === 'strategy-path')?.finalPrompt
-    ).toBe('rebuilt strategy-path')
+    expect(merged.directions.find((item) => item.strategyId === 'strategy-path')?.finalPrompt).toBe(
+      'rebuilt strategy-path'
+    )
     expect(
       merged.directions.find((item) => item.strategyId === 'strategy-frame')?.finalPrompt
     ).toBe('my custom prompt')

@@ -24,9 +24,6 @@ test('keeps direction prompts collapsed when opening a saved project', () => {
   )
 
   expect(screen.getByDisplayValue('base prompt')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: /现代极简/ })).toHaveAttribute(
-    'aria-expanded',
-    'false'
-  )
+  expect(screen.getByRole('button', { name: /现代极简/ })).toHaveAttribute('aria-expanded', 'false')
   expect(screen.queryByDisplayValue('base prompt\ndirection prompt')).not.toBeInTheDocument()
 })

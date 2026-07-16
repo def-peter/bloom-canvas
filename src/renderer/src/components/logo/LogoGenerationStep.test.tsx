@@ -4,9 +4,7 @@ import type { ComponentProps } from 'react'
 import { describe, expect, test, vi } from 'vitest'
 import { LogoGenerationStep } from './LogoGenerationStep'
 
-function renderStep(
-  overrides: Partial<ComponentProps<typeof LogoGenerationStep>> = {}
-): void {
+function renderStep(overrides: Partial<ComponentProps<typeof LogoGenerationStep>> = {}): void {
   render(
     <App>
       <LogoGenerationStep

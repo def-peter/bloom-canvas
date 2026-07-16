@@ -19,9 +19,8 @@ import { CreationPanel } from './CreationPanel'
 import { ErrorNotice } from './ErrorNotice'
 import { GalleryPanel } from './GalleryPanel'
 import { HistoryPanel } from './HistoryPanel'
-import { LogoCreationPanel } from './logo/LogoCreationPanel'
 import { LogoProjectPanel } from './logo/LogoProjectPanel'
-import { LogoResultsPanel } from './logo/LogoResultsPanel'
+import { LogoWorkflowPanel } from './logo/LogoWorkflowPanel'
 import { ProviderSettingsModal } from './ProviderSettingsModal'
 
 const { Header } = Layout
@@ -241,7 +240,7 @@ function WorkbenchShell(): React.JSX.Element {
           />
         </div>
       ) : (
-        <div className="workspace-grid logo-workspace-grid">
+        <div className="logo-workspace">
           <LogoProjectPanel
             generating={generating}
             projects={logoProjects}
@@ -254,28 +253,24 @@ function WorkbenchShell(): React.JSX.Element {
             onDelete={handleDeleteLogoProject}
             onSelect={selectLogoProject}
           />
-          <LogoResultsPanel
+          <LogoWorkflowPanel
             key={selectedLogoProject?.id ?? 'no-logo-project'}
-            generating={generating}
-            generations={generations}
-            selectedProjectId={selectedLogoProject?.id ?? null}
-            onContinueEdit={handleContinueEdit}
-            onDelete={handleDeleteGeneration}
-            onDeleteVariants={handleDeleteVariants}
-            onExport={handleExport}
-            onRetry={handleRetry}
-          />
-          <LogoCreationPanel
             activeProvider={activeProvider}
+            generations={generations}
             project={selectedLogoProject}
             referenceAssets={logoReferenceAssets}
             settings={settings}
             onCreated={handleGenerationCreated}
+            onContinueEdit={handleContinueEdit}
+            onDelete={handleDeleteGeneration}
+            onDeleteVariants={handleDeleteVariants}
             onError={setError}
+            onExport={handleExport}
             onGeneratingChange={setGenerating}
             onNeedProvider={() => setProviderModalOpen(true)}
             onProjectSaved={handleLogoProjectSaved}
             onReferenceAssetsChange={setLogoReferenceAssets}
+            onRetry={handleRetry}
           />
         </div>
       )}

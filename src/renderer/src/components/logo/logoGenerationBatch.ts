@@ -49,7 +49,11 @@ export async function runLogoGenerationBatch(
   publish()
   await Promise.all(
     input.strategies.map(async (strategy) => {
-      for (let candidateIndex = 0; candidateIndex < input.candidatesPerStrategy; candidateIndex += 1) {
+      for (
+        let candidateIndex = 0;
+        candidateIndex < input.candidatesPerStrategy;
+        candidateIndex += 1
+      ) {
         const key = `${strategy.id}:${candidateIndex}`
         update(key, { status: 'running', errorMessage: undefined })
         try {

@@ -37,8 +37,7 @@ describe('runLogoGenerationBatch', () => {
     const result = await runLogoGenerationBatch({
       strategies: logoTestRevision.strategies,
       candidatesPerStrategy: 2,
-      createCandidate: (strategy, candidateIndex) =>
-        createCandidate(strategy.id, candidateIndex),
+      createCandidate: (strategy, candidateIndex) => createCandidate(strategy.id, candidateIndex),
       onProgress: (items) => updates.push(items)
     })
 

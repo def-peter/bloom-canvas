@@ -1,9 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import {
-  logoTestBrief,
-  logoTestPromptPack,
-  logoTestRevision
-} from './logoDesign.testFixtures'
+import { logoTestBrief, logoTestPromptPack, logoTestRevision } from './logoDesign.testFixtures'
 import type { LogoStrategyPromptPack } from './logoDesign'
 import {
   buildLogoPromptPackSchema,

@@ -2,13 +2,12 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { App } from 'antd'
 import type { ComponentProps } from 'react'
 import { describe, expect, test, vi } from 'vitest'
-import {
-  logoTestPromptPack,
-  logoTestRevision
-} from '../../../../shared/logoDesign.testFixtures'
+import { logoTestPromptPack, logoTestRevision } from '../../../../shared/logoDesign.testFixtures'
 import { LogoStrategyStep } from './LogoStrategyStep'
 
-function renderStrategyStep(overrides: Partial<ComponentProps<typeof LogoStrategyStep>> = {}): void {
+function renderStrategyStep(
+  overrides: Partial<ComponentProps<typeof LogoStrategyStep>> = {}
+): void {
   render(
     <App>
       <LogoStrategyStep

@@ -317,8 +317,171 @@ body {
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.16);
 }
 
-.logo-workspace-grid {
-  grid-template-columns: 260px minmax(0, 1fr) 420px;
+.logo-workspace {
+  height: calc(100vh - 72px);
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 16px;
+  overflow: hidden;
+}
+
+.logo-workflow-panel {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--bc-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--bc-shadow);
+}
+
+.logo-workflow-panel > .ant-steps {
+  flex: 0 0 auto;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--bc-border);
+}
+
+.logo-workflow-content {
+  min-height: 0;
+  flex: 1;
+  padding: 24px;
+  overflow: auto;
+}
+
+.logo-workflow-step {
+  width: 100%;
+  display: grid;
+  gap: 20px;
+}
+
+.logo-step-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.logo-step-heading h4.ant-typography,
+.logo-strategy-card h5.ant-typography,
+.logo-strategy-card .ant-typography,
+.logo-step-heading .ant-typography {
+  margin: 0;
+}
+
+.logo-brief-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+
+.logo-type-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px 16px;
+}
+
+.logo-strategy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(240px, 1fr));
+  align-items: start;
+  gap: 16px;
+}
+
+.logo-strategy-card {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--bc-border);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.logo-strategy-card-header,
+.logo-generation-progress-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.logo-strategy-facts {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.logo-strategy-facts div {
+  display: grid;
+  gap: 2px;
+}
+
+.logo-strategy-facts dt,
+.logo-field-label {
+  color: var(--bc-muted);
+  font-size: 12px;
+}
+
+.logo-strategy-facts dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+
+.logo-strategy-exclusions {
+  min-height: 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.logo-strategy-card > .ant-select {
+  width: 100%;
+}
+
+.logo-strategy-edit-form,
+.logo-generation-controls,
+.logo-generation-progress-list,
+.logo-generation-progress {
+  display: grid;
+  gap: 12px;
+}
+
+.logo-generation-controls {
+  max-width: 520px;
+}
+
+.logo-generation-progress-list {
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+}
+
+.logo-generation-progress {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--bc-border);
+  border-radius: 8px;
+}
+
+.logo-generation-step .logo-results-panel {
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.logo-quick-refinement-step > .ant-image {
+  width: min(560px, 100%);
+  aspect-ratio: 1;
+}
+
+.logo-quick-refinement-step > .ant-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .logo-project-panel .ant-list-item {
@@ -430,8 +593,13 @@ body {
     grid-template-columns: minmax(210px, 260px) minmax(340px, 1fr);
   }
 
-  .logo-workspace-grid {
+  .logo-workspace {
     grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .logo-strategy-grid,
+  .logo-generation-progress-list {
+    grid-template-columns: 1fr;
   }
 
   .creation-panel {
@@ -463,6 +631,31 @@ body {
     min-height: calc(100vh - 118px);
     grid-template-columns: 1fr;
     overflow: visible;
+  }
+
+  .logo-workspace {
+    height: auto;
+    min-height: calc(100vh - 118px);
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .logo-workflow-panel {
+    min-height: 640px;
+    overflow: visible;
+  }
+
+  .logo-workflow-panel > .ant-steps {
+    padding: 14px;
+  }
+
+  .logo-workflow-content {
+    padding: 16px;
+    overflow: visible;
+  }
+
+  .logo-brief-grid {
+    grid-template-columns: 1fr;
   }
 
   .history-panel,

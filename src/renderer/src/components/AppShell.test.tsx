@@ -210,7 +210,10 @@ describe('AppShell', () => {
     fireEvent.click(screen.getByText('Logo 设计'))
 
     expect(await screen.findByText('Logo 项目')).toBeInTheDocument()
-    expect(screen.getByText('品牌简报')).toBeInTheDocument()
+    expect(screen.getAllByText('品牌简报')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: '生成创意策略' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '生成/更新提示词' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Logo 结果')).not.toBeInTheDocument()
   })
 
   it('selects the generated record after creating an image', async () => {
@@ -299,7 +302,16 @@ describe('AppShell', () => {
         retry: vi.fn()
       },
       logoProjects: {
-        list: vi.fn().mockResolvedValue({ ok: true, data: [logoProject] }),
+        list: vi.fn().mockResolvedValue({
+          ok: true,
+          data: [
+            {
+              ...logoProject,
+              selectedCandidateId: 'logo-variant-1',
+              workflowStep: 'refinement'
+            }
+          ]
+        }),
         save: vi.fn(),
         get: vi.fn(),
         remove: vi.fn()

@@ -9,11 +9,15 @@ import {
   importAssetSchema,
   generateLogoStrategiesSchema,
   promptOptimizeSchema,
+  reviewLogoCandidateInputSchema,
   saveLogoProjectSchema,
   saveProviderSchema
 } from '../../shared/schemas'
 import type { AppErrorPayload, AppResult, AppSettings } from '../../shared/types'
 import { LogoStrategyService } from '../logo/logoStrategyService'
+import { LogoPreviewService } from '../logo/logoPreviewService'
+import { resolveLogoReviewContext } from '../logo/logoReviewContext'
+import { LogoReviewService } from '../logo/logoReviewService'
 import { getAppPaths } from '../services/appPaths'
 import { AssetService } from '../services/assetService'
 import { CredentialService } from '../services/credentialService'
@@ -58,7 +62,10 @@ export function registerIpcHandlers(): void {
   const imageProvider = new OpenAICompatibleProvider()
   const generations = new GenerationService(storage, providers, imageProvider, assets)
   const logoProjects = new LogoProjectService(storage)
-  const logoStrategies = new LogoStrategyService(new OpenAIResponsesClient())
+  const responses = new OpenAIResponsesClient()
+  const logoPreviews = new LogoPreviewService()
+  const logoReviews = new LogoReviewService(responses, logoPreviews)
+  const logoStrategies = new LogoStrategyService(responses)
   const promptOptimizer = new PromptOptimizeService()
 
   ipcMain.handle(IPC_CHANNELS.providerList, async () => ok(await providers.list()))
@@ -112,6 +119,18 @@ export function registerIpcHandlers(): void {
     try {
       const parsed = z.array(z.string().min(1)).max(100).parse(assetIds)
       return ok(await assets.getMany(parsed))
+    } catch (error) {
+      return err(toErrorPayload(error))
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.logoPreviewGet, async (_event, assetId: unknown) => {
+    try {
+      const parsedAssetId = z.string().min(1).parse(assetId)
+      const state = await storage.read()
+      const asset = state.assets.find((item) => item.id === parsedAssetId)
+      if (!asset) throw new Error('Asset not found')
+      return ok(await logoPreviews.create(asset))
     } catch (error) {
       return err(toErrorPayload(error))
     }
@@ -235,6 +254,23 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.logoPromptBuildStrategy, async (_event, input) => {
     try {
       return ok(buildLogoStrategyPromptPack(buildLogoStrategyPromptPackSchema.parse(input)))
+    } catch (error) {
+      return err(toErrorPayload(error))
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.logoReviewRun, async (_event, input) => {
+    try {
+      const parsed = reviewLogoCandidateInputSchema.parse(input)
+      const state = await storage.read()
+      const provider = state.providers.find((item) => item.id === parsed.providerId)
+      if (!provider) throw new Error('Provider is not configured')
+      const apiKey = await providers.getApiKey(provider.id)
+      if (!apiKey) throw new Error('Provider API key is missing')
+      const context = resolveLogoReviewContext(state, parsed.projectId, parsed.variantId)
+      const review = await logoReviews.review(provider, apiKey, context, parsed.useVision)
+      await logoProjects.saveCandidateReview(parsed.projectId, review)
+      return ok(review)
     } catch (error) {
       return err(toErrorPayload(error))
     }

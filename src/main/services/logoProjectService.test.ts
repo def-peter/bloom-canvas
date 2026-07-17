@@ -8,7 +8,7 @@ import {
   logoTestRevision
 } from '../../shared/logoDesign.testFixtures'
 import { saveLogoProjectSchema } from '../../shared/schemas'
-import type { LogoProject, SaveLogoProjectInput } from '../../shared/types'
+import type { LogoCandidateReview, LogoProject, SaveLogoProjectInput } from '../../shared/types'
 import { createBriefFingerprint, createPromptFingerprint } from '../logo/logoBriefNormalizer'
 import type { AppPaths } from './appPaths'
 import { LogoProjectService } from './logoProjectService'
@@ -129,6 +129,29 @@ afterEach(async () => {
 })
 
 describe('LogoProjectService', () => {
+  test('upserts one candidate review without deleting another', async () => {
+    const project = await service.save(v2ProjectInput())
+    const review = (candidateId: string): LogoCandidateReview => ({
+      candidateId,
+      status: 'recommended',
+      reviewMode: 'vision-model',
+      scores: {
+        strategyFit: 86,
+        distinctiveness: 78,
+        simplicity: 91,
+        smallSizePotential: 84,
+        craft: 80
+      },
+      hardFailures: [],
+      risksZh: []
+    })
+
+    await service.saveCandidateReview(project.id, review('variant-1'))
+    const updated = await service.saveCandidateReview(project.id, review('variant-2'))
+
+    expect(Object.keys(updated.candidateReviews ?? {})).toEqual(['variant-1', 'variant-2'])
+  })
+
   test('migrates a legacy metadata project through a parsed V2 save', async () => {
     const existing = legacyProject()
     await seedProject(existing)

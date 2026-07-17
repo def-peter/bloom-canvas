@@ -2,6 +2,9 @@ import type {
   BuildLogoStrategyPromptPackInput,
   GenerateLogoStrategiesInput,
   LogoDesignRevision,
+  LogoCandidateReview,
+  LogoPreviewSet,
+  ReviewLogoCandidateInput,
   LogoStrategyPromptPack
 } from './logoDesign'
 import type {
@@ -44,7 +47,9 @@ export const IPC_CHANNELS = {
   logoProjectRemove: 'logoProject:remove',
   logoPromptBuild: 'logoPrompt:build',
   logoStrategyGenerate: 'logoStrategy:generate',
-  logoPromptBuildStrategy: 'logoPrompt:buildStrategy'
+  logoPromptBuildStrategy: 'logoPrompt:buildStrategy',
+  logoPreviewGet: 'logoPreview:get',
+  logoReviewRun: 'logoReview:run'
 } as const
 
 export interface BloomCanvasApi {
@@ -82,6 +87,12 @@ export interface BloomCanvasApi {
   }
   logoStrategy: {
     generate: (input: GenerateLogoStrategiesInput) => Promise<AppResult<LogoDesignRevision>>
+  }
+  logoPreview: {
+    get: (assetId: string) => Promise<AppResult<LogoPreviewSet>>
+  }
+  logoReview: {
+    run: (input: ReviewLogoCandidateInput) => Promise<AppResult<LogoCandidateReview>>
   }
   logoPrompt: {
     build: (input: BuildLogoPromptPackInput) => Promise<AppResult<LogoPromptPack>>

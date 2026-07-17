@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid'
-import type { LogoBrandBriefV2 } from '../../shared/logoDesign'
+import type { LogoBrandBriefV2, LogoCandidateReview } from '../../shared/logoDesign'
 import type {
   GenerationId,
   LogoProject,
@@ -219,6 +219,34 @@ export class LogoProjectService {
           : project
       )
     }))
+    const project = state.logoProjects.find((item) => item.id === projectId)
+    if (!project) throw new Error('Logo project not found')
+    return project
+  }
+
+  async saveCandidateReview(
+    projectId: LogoProjectId,
+    review: LogoCandidateReview
+  ): Promise<LogoProject> {
+    const state = await this.storage.update((current) => {
+      const project = current.logoProjects.find((item) => item.id === projectId)
+      if (!project) throw new Error('Logo project not found')
+      return {
+        ...current,
+        logoProjects: current.logoProjects.map((item) =>
+          item.id === projectId
+            ? {
+                ...item,
+                candidateReviews: {
+                  ...(item.candidateReviews ?? {}),
+                  [review.candidateId]: review
+                },
+                updatedAt: new Date().toISOString()
+              }
+            : item
+        )
+      }
+    })
     const project = state.logoProjects.find((item) => item.id === projectId)
     if (!project) throw new Error('Logo project not found')
     return project

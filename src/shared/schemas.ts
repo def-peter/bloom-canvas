@@ -238,6 +238,13 @@ export const logoCandidateReviewSchema = z.discriminatedUnion('reviewMode', [
     .strict()
 ])
 
+export const reviewLogoCandidateInputSchema = z.object({
+  providerId: z.string().min(1),
+  projectId: z.string().min(1),
+  variantId: z.string().min(1),
+  useVision: z.boolean()
+})
+
 export const saveLogoProjectSchema = z.object({
   id: z.string().min(1).optional(),
   briefVersion: z.number().int().positive().optional(),

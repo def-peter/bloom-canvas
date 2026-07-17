@@ -57,4 +57,18 @@ describe('preload bridge', () => {
       'getMany: (assetIds) => ipcRenderer.invoke(IPC_CHANNELS.assetGetMany, assetIds)'
     )
   })
+
+  it('exposes logo preview and review APIs', async () => {
+    const [ipcSource, preloadSource] = await Promise.all([
+      readFile(join(process.cwd(), 'src/shared/ipc.ts'), 'utf8'),
+      readFile(join(process.cwd(), 'src/preload/index.ts'), 'utf8')
+    ])
+
+    expect(ipcSource).toContain("logoPreviewGet: 'logoPreview:get'")
+    expect(ipcSource).toContain("logoReviewRun: 'logoReview:run'")
+    expect(preloadSource).toContain('logoPreview: {')
+    expect(preloadSource).toContain('logoReview: {')
+    expect(preloadSource).toContain('IPC_CHANNELS.logoPreviewGet')
+    expect(preloadSource).toContain('IPC_CHANNELS.logoReviewRun')
+  })
 })

@@ -2,10 +2,13 @@ import { CheckSquareOutlined, DeleteOutlined } from '@ant-design/icons'
 import { Button, Checkbox, Collapse, Empty, Image, Modal, Space, Spin, Typography } from 'antd'
 import { useState } from 'react'
 import { assetProtocolUrl } from '../../../../shared/assetProtocol'
+import type { LogoCandidateReview } from '../../../../shared/logoDesign'
 import type { Asset, GenerationRecord } from '../../../../shared/types'
+import { LogoReviewBadge } from './LogoReviewBadge'
 import { LogoUsabilityPreview } from './LogoUsabilityPreview'
 
 interface LogoResultsPanelProps {
+  candidateReviews?: Record<string, LogoCandidateReview>
   generating: boolean
   generations: GenerationRecord[]
   selectedProjectId: string | null
@@ -16,19 +19,38 @@ interface LogoResultsPanelProps {
   onRetry: (generationId: string) => Promise<void>
 }
 
-function groupByDirection(generations: GenerationRecord[]): Record<string, GenerationRecord[]> {
-  return generations.reduce<Record<string, GenerationRecord[]>>((groups, generation) => {
-    const metadata = generation.scenarioMetadata
-    const key =
-      metadata?.version === 2
-        ? metadata.strategyNameZh
-        : (metadata?.styleDirectionName ?? '未分类方向')
-    groups[key] = [...(groups[key] ?? []), generation]
-    return groups
-  }, {})
+interface LogoCandidateEntry {
+  directionName: string
+  generation: GenerationRecord
+  review?: LogoCandidateReview
+  variant: GenerationRecord['variants'][number]
+}
+
+function directionName(generation: GenerationRecord): string {
+  const metadata = generation.scenarioMetadata
+  return metadata?.version === 2
+    ? metadata.strategyNameZh
+    : (metadata?.styleDirectionName ?? '未分类方向')
+}
+
+function reviewWeight(review: LogoCandidateReview | undefined): number {
+  if (review?.status === 'recommended') return 0
+  if (review?.status === 'adjustable') return 1
+  if (review?.status === 'unreviewed') return 2
+  if (!review) return 3
+  return 4
+}
+
+function groupEntries(entries: LogoCandidateEntry[]): Array<[string, LogoCandidateEntry[]]> {
+  const groups = new Map<string, LogoCandidateEntry[]>()
+  for (const entry of entries) {
+    groups.set(entry.directionName, [...(groups.get(entry.directionName) ?? []), entry])
+  }
+  return Array.from(groups)
 }
 
 export function LogoResultsPanel({
+  candidateReviews = {},
   generating,
   generations,
   selectedProjectId,
@@ -90,6 +112,89 @@ export function LogoResultsPanel({
     }
   }
 
+  function renderCandidateGroups(groups: Array<[string, LogoCandidateEntry[]]>): React.JSX.Element {
+    return (
+      <div className="logo-direction-groups">
+        {groups.map(([name, directionEntries]) => (
+          <section className="logo-direction-group" key={name}>
+            <div className="logo-direction-header">
+              <Typography.Text strong>{name}</Typography.Text>
+              <Typography.Text type="secondary">{directionEntries.length} 个候选</Typography.Text>
+            </div>
+            <div className="result-grid">
+              {directionEntries.map(({ generation, review, variant }) => (
+                <article
+                  className={`result-card${selectedVariantIds.includes(variant.id) ? ' selected' : ''}`}
+                  key={variant.id}
+                >
+                  <Image
+                    alt={`${name} 方案 ${variant.index + 1}`}
+                    preview={!selectionMode}
+                    src={assetProtocolUrl(variant.asset.id)}
+                    onClick={() => {
+                      if (selectionMode) toggleVariant(variant.id)
+                    }}
+                  />
+                  {review ? <LogoReviewBadge review={review} /> : null}
+                  {selectionMode ? (
+                    <Checkbox
+                      aria-label={`选择图片 ${variant.id}`}
+                      checked={selectedVariantIds.includes(variant.id)}
+                      className="image-selection-checkbox"
+                      onChange={() => toggleVariant(variant.id)}
+                    />
+                  ) : (
+                    <>
+                      <div className="result-actions">
+                        <Button size="small" onClick={() => onContinueEdit(variant.asset)}>
+                          继续修改
+                        </Button>
+                        <Button size="small" onClick={() => void onExport(variant.asset.id)}>
+                          导出
+                        </Button>
+                        <Button
+                          danger
+                          disabled={generating}
+                          icon={<DeleteOutlined />}
+                          size="small"
+                          onClick={() => setDeleteTargetId(generation.id)}
+                        >
+                          删除
+                        </Button>
+                        <Button
+                          aria-label={
+                            retryingGenerationId === generation.id ? '重新生成中' : '重新生成'
+                          }
+                          disabled={retryingGenerationId === generation.id}
+                          loading={retryingGenerationId === generation.id}
+                          size="small"
+                          onClick={() => void retryGeneration(generation.id)}
+                        >
+                          {retryingGenerationId === generation.id ? '重新生成中' : '重新生成'}
+                        </Button>
+                      </div>
+                      <Collapse
+                        ghost
+                        items={[
+                          {
+                            children: <LogoUsabilityPreview asset={variant.asset} />,
+                            key: 'checks',
+                            label: '可用性检查'
+                          }
+                        ]}
+                        size="small"
+                      />
+                    </>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    )
+  }
+
   if (!selectedProjectId) {
     return (
       <main className="gallery-panel logo-results-panel">
@@ -102,11 +207,30 @@ export function LogoResultsPanel({
     (generation) =>
       generation.scenario === 'logo-design' && generation.projectId === selectedProjectId
   )
-  const groups = groupByDirection(projectGenerations)
-  const entries = Object.entries(groups)
-  const allVariantIds = projectGenerations.flatMap((generation) =>
-    generation.variants.map((variant) => variant.id)
+  const candidates = projectGenerations
+    .flatMap((generation) =>
+      generation.variants.map((variant) => ({
+        directionName: directionName(generation),
+        generation,
+        review: candidateReviews[variant.id],
+        variant
+      }))
+    )
+    .sort((left, right) => {
+      const weight = reviewWeight(left.review) - reviewWeight(right.review)
+      if (weight !== 0) return weight
+      const time = left.generation.createdAt.localeCompare(right.generation.createdAt)
+      if (time !== 0) return time
+      return left.variant.index - right.variant.index
+    })
+  const primaryGroups = groupEntries(
+    candidates.filter((candidate) => candidate.review?.status !== 'not-recommended')
   )
+  const rejectedGroups = groupEntries(
+    candidates.filter((candidate) => candidate.review?.status === 'not-recommended')
+  )
+  const rejectedCount = rejectedGroups.reduce((count, [, entries]) => count + entries.length, 0)
+  const allVariantIds = candidates.map((candidate) => candidate.variant.id)
 
   return (
     <main className="gallery-panel logo-results-panel">
@@ -168,90 +292,23 @@ export function LogoResultsPanel({
           ) : null}
         </Space>
       </div>
-      {entries.length === 0 ? (
+      {candidates.length === 0 ? (
         <Empty description="还没有 Logo 初稿" image={Empty.PRESENTED_IMAGE_SIMPLE} />
       ) : (
-        <div className="logo-direction-groups">
-          {entries.map(([directionName, directionGenerations]) => (
-            <section className="logo-direction-group" key={directionName}>
-              <div className="logo-direction-header">
-                <Typography.Text strong>{directionName}</Typography.Text>
-                <Typography.Text type="secondary">
-                  {directionGenerations.length} 次生成
-                </Typography.Text>
-              </div>
-              <div className="result-grid">
-                {directionGenerations.flatMap((generation) =>
-                  generation.variants.map((variant) => (
-                    <article
-                      className={`result-card${selectedVariantIds.includes(variant.id) ? ' selected' : ''}`}
-                      key={variant.id}
-                    >
-                      <Image
-                        alt={`${directionName} 方案 ${variant.index + 1}`}
-                        preview={!selectionMode}
-                        src={assetProtocolUrl(variant.asset.id)}
-                        onClick={() => {
-                          if (selectionMode) toggleVariant(variant.id)
-                        }}
-                      />
-                      {selectionMode ? (
-                        <Checkbox
-                          aria-label={`选择图片 ${variant.id}`}
-                          checked={selectedVariantIds.includes(variant.id)}
-                          className="image-selection-checkbox"
-                          onChange={() => toggleVariant(variant.id)}
-                        />
-                      ) : (
-                        <>
-                          <div className="result-actions">
-                            <Button size="small" onClick={() => onContinueEdit(variant.asset)}>
-                              继续修改
-                            </Button>
-                            <Button size="small" onClick={() => void onExport(variant.asset.id)}>
-                              导出
-                            </Button>
-                            <Button
-                              danger
-                              disabled={generating}
-                              icon={<DeleteOutlined />}
-                              size="small"
-                              onClick={() => setDeleteTargetId(generation.id)}
-                            >
-                              删除
-                            </Button>
-                            <Button
-                              aria-label={
-                                retryingGenerationId === generation.id ? '重新生成中' : '重新生成'
-                              }
-                              disabled={retryingGenerationId === generation.id}
-                              loading={retryingGenerationId === generation.id}
-                              size="small"
-                              onClick={() => void retryGeneration(generation.id)}
-                            >
-                              {retryingGenerationId === generation.id ? '重新生成中' : '重新生成'}
-                            </Button>
-                          </div>
-                          <Collapse
-                            ghost
-                            items={[
-                              {
-                                children: <LogoUsabilityPreview asset={variant.asset} />,
-                                key: 'checks',
-                                label: '可用性检查'
-                              }
-                            ]}
-                            size="small"
-                          />
-                        </>
-                      )}
-                    </article>
-                  ))
-                )}
-              </div>
-            </section>
-          ))}
-        </div>
+        <>
+          {renderCandidateGroups(primaryGroups)}
+          {rejectedCount > 0 ? (
+            <Collapse
+              items={[
+                {
+                  children: renderCandidateGroups(rejectedGroups),
+                  key: 'not-recommended',
+                  label: `查看不建议继续的结果（${rejectedCount}）`
+                }
+              ]}
+            />
+          ) : null}
+        </>
       )}
       <Modal
         cancelText="取消"

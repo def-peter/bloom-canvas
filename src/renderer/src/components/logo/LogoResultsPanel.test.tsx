@@ -1,5 +1,11 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
+import {
+  logoTestBrief,
+  logoTestPromptPack,
+  logoTestRevision
+} from '../../../../shared/logoDesign.testFixtures'
+import type { LogoCandidateReview } from '../../../../shared/logoDesign'
 import type { GenerationRecord, LogoStyleDirectionId } from '../../../../shared/types'
 import { LogoResultsPanel } from './LogoResultsPanel'
 
@@ -60,13 +66,121 @@ const logoAsset = {
 } satisfies GenerationRecord['variants'][number]['asset']
 
 describe('LogoResultsPanel', () => {
+  test('sorts recommended candidates first and folds not-recommended results', () => {
+    const rejectedAsset = { ...logoAsset, id: 'asset-rejected' }
+    const recommendedAsset = { ...logoAsset, id: 'asset-recommended' }
+    const v2Record = (
+      id: string,
+      candidateId: string,
+      asset: typeof logoAsset,
+      candidateIndex: number
+    ): GenerationRecord => ({
+      ...logoRecord('modern-minimal', '现代极简'),
+      id,
+      scenarioMetadata: {
+        version: 2,
+        logoProjectId: 'project-1',
+        strategyId: logoTestRevision.strategies[0].id,
+        strategyNameZh: logoTestRevision.strategies[0].nameZh,
+        grammarId: logoTestRevision.strategies[0].grammarId,
+        candidateIndex,
+        logoType: logoTestBrief.logoType,
+        designRevisionSnapshot: logoTestRevision,
+        promptDirectionSnapshot: logoTestPromptPack.directions[0],
+        briefSnapshot: logoTestBrief,
+        qualityRulesVersion: 2,
+        qualityRetryAttempt: 0
+      },
+      outputVariantIds: [candidateId],
+      variants: [
+        {
+          id: candidateId,
+          generationId: id,
+          assetId: asset.id,
+          index: candidateIndex,
+          favorite: false,
+          createdAt: '2026-07-09T00:00:00.000Z',
+          asset
+        }
+      ]
+    })
+    const review = (
+      candidateId: string,
+      status: 'recommended' | 'not-recommended'
+    ): LogoCandidateReview => ({
+      candidateId,
+      status,
+      reviewMode: 'vision-model',
+      scores: {
+        strategyFit: status === 'recommended' ? 90 : 40,
+        distinctiveness: 80,
+        simplicity: 85,
+        smallSizePotential: 82,
+        craft: 84
+      },
+      hardFailures: status === 'not-recommended' ? ['出现未要求的伪文字'] : [],
+      risksZh: []
+    })
+
+    render(
+      <LogoResultsPanel
+        candidateReviews={{
+          rejected: review('rejected', 'not-recommended'),
+          recommended: review('recommended', 'recommended')
+        }}
+        generating={false}
+        generations={[
+          v2Record('generation-rejected', 'rejected', rejectedAsset, 0),
+          v2Record('generation-recommended', 'recommended', recommendedAsset, 1)
+        ]}
+        selectedProjectId="project-1"
+        onContinueEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onDeleteVariants={vi.fn()}
+        onExport={vi.fn()}
+        onRetry={vi.fn()}
+      />
+    )
+
+    expect(screen.getByRole('img', { name: '连续创作路径 方案 2' })).toHaveAttribute(
+      'src',
+      'bloom-canvas://asset/asset-recommended'
+    )
+    expect(screen.queryByRole('img', { name: '连续创作路径 方案 1' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('查看不建议继续的结果（1）'))
+    expect(screen.getByRole('img', { name: '连续创作路径 方案 1' })).toHaveAttribute(
+      'src',
+      'bloom-canvas://asset/asset-rejected'
+    )
+  })
+
   test('groups logo generations by style direction', () => {
     render(
       <LogoResultsPanel
         generating={false}
         generations={[
-          logoRecord('modern-minimal', '现代极简'),
-          logoRecord('symbolic-mark', '图形符号')
+          logoRecord('modern-minimal', '现代极简', [
+            {
+              id: 'variant-modern',
+              generationId: 'generation-modern-minimal',
+              assetId: logoAsset.id,
+              index: 0,
+              favorite: false,
+              createdAt: '2026-07-09T00:00:00.000Z',
+              asset: logoAsset
+            }
+          ]),
+          logoRecord('symbolic-mark', '图形符号', [
+            {
+              id: 'variant-symbolic',
+              generationId: 'generation-symbolic-mark',
+              assetId: 'asset-symbolic',
+              index: 0,
+              favorite: false,
+              createdAt: '2026-07-09T00:00:00.000Z',
+              asset: { ...logoAsset, id: 'asset-symbolic' }
+            }
+          ])
         ]}
         selectedProjectId="project-1"
         onContinueEdit={vi.fn()}

@@ -191,6 +191,22 @@ export const buildLogoStrategyPromptPackSchema = z.object({
   renderStyles: z.record(z.string().min(1), logoRenderStyleSchema).optional()
 })
 
+export const buildLogoRefinementPromptInputSchema = z.object({
+  brief: logoBrandBriefV2Schema,
+  strategy: logoDesignStrategySchema,
+  sourcePrompt: logoStrategyPromptDirectionSchema,
+  mode: z.enum(['preserve-structure', 'explore']),
+  operation: z.enum([
+    'custom',
+    'add-brand-name',
+    'horizontal-lockup',
+    'application-style',
+    'monochrome'
+  ]),
+  instruction: z.string().trim().max(1200),
+  renderStyle: logoRenderStyleSchema.optional()
+})
+
 export const logoPromptDirectionSchema = z.object({
   id: logoStyleDirectionSchema,
   name: z.string().trim().min(1),

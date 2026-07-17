@@ -29,6 +29,8 @@ describe('preload bridge', () => {
     expect(preloadSource).toContain(
       'buildStrategy: (input) => ipcRenderer.invoke(IPC_CHANNELS.logoPromptBuildStrategy, input)'
     )
+    expect(ipcSource).toContain("logoPromptBuildRefinement: 'logoPrompt:buildRefinement'")
+    expect(preloadSource).toContain('IPC_CHANNELS.logoPromptBuildRefinement')
   })
 
   it('exposes variant batch deletion and logo project deletion channels', async () => {

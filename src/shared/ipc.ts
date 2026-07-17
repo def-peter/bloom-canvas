@@ -1,4 +1,5 @@
 import type {
+  BuildLogoRefinementPromptInput,
   BuildLogoStrategyPromptPackInput,
   GenerateLogoStrategiesInput,
   LogoDesignRevision,
@@ -48,6 +49,7 @@ export const IPC_CHANNELS = {
   logoPromptBuild: 'logoPrompt:build',
   logoStrategyGenerate: 'logoStrategy:generate',
   logoPromptBuildStrategy: 'logoPrompt:buildStrategy',
+  logoPromptBuildRefinement: 'logoPrompt:buildRefinement',
   logoPreviewGet: 'logoPreview:get',
   logoReviewRun: 'logoReview:run'
 } as const
@@ -99,5 +101,6 @@ export interface BloomCanvasApi {
     buildStrategy: (
       input: BuildLogoStrategyPromptPackInput
     ) => Promise<AppResult<LogoStrategyPromptPack>>
+    buildRefinement: (input: BuildLogoRefinementPromptInput) => Promise<AppResult<string>>
   }
 }

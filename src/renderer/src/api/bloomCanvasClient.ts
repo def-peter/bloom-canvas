@@ -90,6 +90,8 @@ export const bloomCanvasClient = {
     build: (input: Parameters<typeof window.bloomCanvas.logoPrompt.build>[0]) =>
       unwrapResult(window.bloomCanvas.logoPrompt.build(input)),
     buildStrategy: (input: Parameters<typeof window.bloomCanvas.logoPrompt.buildStrategy>[0]) =>
-      unwrapResult(window.bloomCanvas.logoPrompt.buildStrategy(input))
+      unwrapResult(window.bloomCanvas.logoPrompt.buildStrategy(input)),
+    buildRefinement: (input: Parameters<typeof window.bloomCanvas.logoPrompt.buildRefinement>[0]) =>
+      unwrapResult(window.bloomCanvas.logoPrompt.buildRefinement(input))
   }
 }

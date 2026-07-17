@@ -187,7 +187,8 @@ function installBloomCanvasApi(overrides: Partial<BloomCanvasApi> = {}): BloomCa
     },
     logoPrompt: {
       build: vi.fn(),
-      buildStrategy: vi.fn()
+      buildStrategy: vi.fn(),
+      buildRefinement: vi.fn()
     },
     ...overrides
   }

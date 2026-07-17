@@ -47,7 +47,8 @@ const bloomCanvasApi: BloomCanvasApi = {
   },
   logoPrompt: {
     build: (input) => ipcRenderer.invoke(IPC_CHANNELS.logoPromptBuild, input),
-    buildStrategy: (input) => ipcRenderer.invoke(IPC_CHANNELS.logoPromptBuildStrategy, input)
+    buildStrategy: (input) => ipcRenderer.invoke(IPC_CHANNELS.logoPromptBuildStrategy, input),
+    buildRefinement: (input) => ipcRenderer.invoke(IPC_CHANNELS.logoPromptBuildRefinement, input)
   }
 }
 

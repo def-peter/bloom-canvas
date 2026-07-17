@@ -3,6 +3,7 @@ import { z, ZodError } from 'zod'
 import { IPC_CHANNELS } from '../../shared/ipc'
 import {
   buildLogoStrategyPromptPackSchema,
+  buildLogoRefinementPromptInputSchema,
   buildLogoPromptPackSchema,
   createGenerationSchema,
   exportAssetSchema,
@@ -18,6 +19,7 @@ import { LogoStrategyService } from '../logo/logoStrategyService'
 import { LogoPreviewService } from '../logo/logoPreviewService'
 import { resolveLogoReviewContext } from '../logo/logoReviewContext'
 import { LogoReviewService } from '../logo/logoReviewService'
+import { buildLogoRefinementPrompt } from '../logo/logoRefinementPromptCompiler'
 import { getAppPaths } from '../services/appPaths'
 import { AssetService } from '../services/assetService'
 import { CredentialService } from '../services/credentialService'
@@ -254,6 +256,14 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.logoPromptBuildStrategy, async (_event, input) => {
     try {
       return ok(buildLogoStrategyPromptPack(buildLogoStrategyPromptPackSchema.parse(input)))
+    } catch (error) {
+      return err(toErrorPayload(error))
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.logoPromptBuildRefinement, async (_event, input) => {
+    try {
+      return ok(buildLogoRefinementPrompt(buildLogoRefinementPromptInputSchema.parse(input)))
     } catch (error) {
       return err(toErrorPayload(error))
     }

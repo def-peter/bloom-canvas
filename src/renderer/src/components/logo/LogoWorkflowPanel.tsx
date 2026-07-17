@@ -1,5 +1,5 @@
 import { Alert, Steps } from 'antd'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type {
   LogoBrandBriefV2,
   LogoCandidateReview,
@@ -22,7 +22,7 @@ import type {
 import { bloomCanvasClient } from '../../api/bloomCanvasClient'
 import { LogoBriefStep } from './LogoBriefStep'
 import { LogoGenerationStep } from './LogoGenerationStep'
-import { LogoQuickRefinementStep } from './LogoQuickRefinementStep'
+import { LogoRefinementPanel } from './LogoRefinementPanel'
 import { LogoStrategyStep } from './LogoStrategyStep'
 import {
   briefToProjectInput,
@@ -41,7 +41,6 @@ interface LogoWorkflowPanelProps {
   referenceAssets?: Asset[]
   settings: AppSettings | null
   onCreated: (record: GenerationRecord) => Promise<void>
-  onContinueEdit: (asset: Asset) => void
   onDelete: (generationId: string) => Promise<void>
   onDeleteVariants: (variantIds: string[]) => Promise<void>
   onError: (error: string | null) => void
@@ -71,7 +70,6 @@ export function LogoWorkflowPanel({
   referenceAssets = [],
   settings,
   onCreated,
-  onContinueEdit,
   onDelete,
   onDeleteVariants,
   onError,
@@ -89,6 +87,8 @@ export function LogoWorkflowPanel({
   const [generating, setGenerating] = useState(false)
   const [qualityRetrying, setQualityRetrying] = useState(false)
   const [batchItems, setBatchItems] = useState<LogoBatchItem[]>([])
+  const [missingCandidateWarning, setMissingCandidateWarning] = useState(false)
+  const repairingCandidateId = useRef<string | null>(null)
 
   const selectedCandidate = useMemo(() => {
     const selectedId = workingProject?.selectedCandidateId
@@ -99,6 +99,36 @@ export function LogoWorkflowPanel({
         .find((variant) => variant.id === selectedId) ?? null
     )
   }, [generations, workingProject?.selectedCandidateId])
+
+  const selectedCandidateMissing = Boolean(
+    workingProject?.selectedCandidateId && !selectedCandidate
+  )
+  const displayedStep = currentStep === 3 && selectedCandidateMissing ? 2 : currentStep
+
+  useEffect(() => {
+    if (currentStep !== 3 || !selectedCandidateMissing || !workingProject) return
+
+    const projectToRepair = workingProject
+    const candidateId = projectToRepair.selectedCandidateId
+    if (!candidateId || repairingCandidateId.current === candidateId) return
+    repairingCandidateId.current = candidateId
+    void bloomCanvasClient.logoProjects
+      .save({
+        ...projectToRepair,
+        selectedCandidateId: null,
+        workflowStep: 'generation'
+      })
+      .then(async (saved) => {
+        setCurrentStep(2)
+        setMissingCandidateWarning(true)
+        setWorkingProject(saved)
+        await onProjectSaved(saved)
+      })
+      .catch((error) => {
+        repairingCandidateId.current = null
+        onError(error instanceof Error ? error.message : '清理失效候选失败')
+      })
+  }, [currentStep, onError, onProjectSaved, selectedCandidateMissing, workingProject])
 
   async function saveProject(input: SaveLogoProjectInput): Promise<LogoProject> {
     const saved = await bloomCanvasClient.logoProjects.save(input)
@@ -459,6 +489,19 @@ export function LogoWorkflowPanel({
       )
   }
 
+  async function selectCandidateVariant(
+    variant: GenerationRecord['variants'][number]
+  ): Promise<void> {
+    if (!workingProject) return
+    await saveProject({
+      ...workingProject,
+      selectedCandidateId: variant.id,
+      workflowStep: 'refinement'
+    })
+    setMissingCandidateWarning(false)
+    setCurrentStep(3)
+  }
+
   function selectCandidate(asset: Asset): void {
     if (!workingProject) return
     const variant = generations
@@ -466,13 +509,9 @@ export function LogoWorkflowPanel({
       .flatMap((generation) => generation.variants)
       .find((item) => item.asset.id === asset.id)
     if (!variant) return
-    void saveProject({
-      ...workingProject,
-      selectedCandidateId: variant.id,
-      workflowStep: 'refinement'
-    })
-      .then(() => setCurrentStep(3))
-      .catch((error) => onError(error instanceof Error ? error.message : '选择候选失败'))
+    void selectCandidateVariant(variant).catch((error) =>
+      onError(error instanceof Error ? error.message : '选择候选失败')
+    )
   }
 
   function changeStep(next: number): void {
@@ -489,7 +528,7 @@ export function LogoWorkflowPanel({
   return (
     <main className="logo-workflow-panel">
       <Steps
-        current={currentStep}
+        current={displayedStep}
         items={[
           { title: '品牌简报' },
           { disabled: !revision, title: '创意策略' },
@@ -499,7 +538,7 @@ export function LogoWorkflowPanel({
         onChange={changeStep}
       />
       <div className="logo-workflow-content">
-        {currentStep === 0 ? (
+        {displayedStep === 0 ? (
           <LogoBriefStep
             initialValues={projectToBriefValues(workingProject)}
             loading={buildingStrategies}
@@ -509,7 +548,7 @@ export function LogoWorkflowPanel({
             onSubmit={createStrategies}
           />
         ) : null}
-        {currentStep === 1 && revision && promptPack ? (
+        {displayedStep === 1 && revision && promptPack ? (
           <LogoStrategyStep
             loadingStrategyId={loadingStrategyId}
             promptPack={promptPack}
@@ -527,45 +566,58 @@ export function LogoWorkflowPanel({
             onReplaceStrategy={replaceStrategy}
           />
         ) : null}
-        {currentStep === 1 && (!revision || !promptPack) ? (
+        {displayedStep === 1 && (!revision || !promptPack) ? (
           <Alert title="请先生成创意策略" type="info" />
         ) : null}
-        {currentStep === 2 && workingProject ? (
-          <LogoGenerationStep
-            aiReviewEnabled={workingProject.aiReviewEnabled ?? true}
-            autoQualityRetry={workingProject.autoQualityRetry ?? true}
-            candidateReviews={workingProject.candidateReviews}
-            generating={generating}
-            generations={generations}
-            items={batchItems}
-            mode={mode}
-            projectId={workingProject.id}
-            qualityRetrying={qualityRetrying}
-            onDelete={onDelete}
-            onDeleteVariants={onDeleteVariants}
-            onExport={onExport}
-            onGenerate={(input) => void generate(input)}
-            onModeChange={(generationMode) => {
-              setWorkingProject({ ...workingProject, generationMode })
-              void saveProject({ ...workingProject, generationMode })
-            }}
-            onReviewSettingsChange={(patch) => {
-              const updated = { ...workingProject, ...patch }
-              setWorkingProject(updated)
-              void saveProject(updated).catch((error) =>
-                onError(error instanceof Error ? error.message : '保存评审设置失败')
-              )
-            }}
-            onRetryGeneration={onRetry}
-            onRetryItem={retryItem}
-            onSelectCandidate={selectCandidate}
-          />
+        {displayedStep === 2 && workingProject ? (
+          <>
+            {missingCandidateWarning || selectedCandidateMissing ? (
+              <Alert showIcon title="已选候选不存在，请重新选择" type="warning" />
+            ) : null}
+            <LogoGenerationStep
+              aiReviewEnabled={workingProject.aiReviewEnabled ?? true}
+              autoQualityRetry={workingProject.autoQualityRetry ?? true}
+              candidateReviews={workingProject.candidateReviews}
+              generating={generating}
+              generations={generations}
+              items={batchItems}
+              mode={mode}
+              projectId={workingProject.id}
+              qualityRetrying={qualityRetrying}
+              onDelete={onDelete}
+              onDeleteVariants={onDeleteVariants}
+              onExport={onExport}
+              onGenerate={(input) => void generate(input)}
+              onModeChange={(generationMode) => {
+                setWorkingProject({ ...workingProject, generationMode })
+                void saveProject({ ...workingProject, generationMode })
+              }}
+              onReviewSettingsChange={(patch) => {
+                const updated = { ...workingProject, ...patch }
+                setWorkingProject(updated)
+                void saveProject(updated).catch((error) =>
+                  onError(error instanceof Error ? error.message : '保存评审设置失败')
+                )
+              }}
+              onRetryGeneration={onRetry}
+              onRetryItem={retryItem}
+              onSelectCandidate={selectCandidate}
+            />
+          </>
         ) : null}
-        {currentStep === 3 ? (
-          <LogoQuickRefinementStep
+        {displayedStep === 3 && selectedCandidate && workingProject ? (
+          <LogoRefinementPanel
+            activeProvider={activeProvider}
             candidate={selectedCandidate}
-            onContinueEdit={(candidate) => onContinueEdit(candidate.asset)}
+            generations={generations}
+            project={workingProject}
+            settings={settings}
+            onCreated={onCreated}
+            onError={onError}
             onExport={onExport}
+            onGeneratingChange={onGeneratingChange}
+            onNeedProvider={onNeedProvider}
+            onSelectCandidate={selectCandidateVariant}
           />
         ) : null}
       </div>

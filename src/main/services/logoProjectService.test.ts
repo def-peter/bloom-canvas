@@ -250,6 +250,26 @@ describe('LogoProjectService', () => {
     expect(updated.candidateReviews).toEqual(candidateReviews)
   })
 
+  test('clears the selected candidate only when explicitly requested', async () => {
+    const created = await service.save(
+      v2ProjectInput({ selectedCandidateId: 'variant-1', workflowStep: 'refinement' })
+    )
+
+    const preserved = await service.save({
+      ...created,
+      selectedCandidateId: undefined
+    })
+    const cleared = await service.save({
+      ...preserved,
+      selectedCandidateId: null,
+      workflowStep: 'generation'
+    })
+
+    expect(preserved.selectedCandidateId).toBe('variant-1')
+    expect(cleared.selectedCandidateId).toBeUndefined()
+    expect(cleared.workflowStep).toBe('generation')
+  })
+
   test('increments brief and prompt versions for business changes while retaining stale artifacts', async () => {
     const created = await service.save(
       v2ProjectInput({

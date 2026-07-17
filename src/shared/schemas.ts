@@ -292,7 +292,7 @@ export const saveLogoProjectSchema = z.object({
   generationMode: z.enum(['quality-first', 'economy']).optional(),
   aiReviewEnabled: z.boolean().optional(),
   autoQualityRetry: z.boolean().optional(),
-  selectedCandidateId: z.string().min(1).optional(),
+  selectedCandidateId: z.string().min(1).nullable().optional(),
   candidateReviews: z.record(z.string().min(1), logoCandidateReviewSchema).optional()
 })
 

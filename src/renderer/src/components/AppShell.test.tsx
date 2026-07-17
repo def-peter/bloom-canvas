@@ -1,6 +1,11 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BloomCanvasApi } from '../../../shared/ipc'
+import {
+  logoTestBrief,
+  logoTestPromptPack,
+  logoTestRevision
+} from '../../../shared/logoDesign.testFixtures'
 import type { GenerationRecord, LogoProject, ProviderConfig } from '../../../shared/types'
 import { AppShell } from './AppShell'
 
@@ -96,22 +101,18 @@ const logoGeneratedRecordWithVariant: GenerationRecord = {
   scenario: 'logo-design',
   projectId: logoProject.id,
   scenarioMetadata: {
+    version: 2,
     logoProjectId: logoProject.id,
-    styleDirectionId: 'modern-minimal',
-    styleDirectionName: '现代极简',
-    logoTypes: ['combination-mark'],
-    promptPackSnapshot: {
-      basePrompt: 'base prompt',
-      directions: []
-    },
-    finalPrompt: 'logo final prompt',
-    briefSnapshot: {
-      brandName: '生花',
-      industry: 'AI 绘图软件',
-      businessDescription: '帮助创作者生成图片',
-      brandKeywords: ['清晰']
-    },
-    qualityRulesVersion: 1
+    strategyId: logoTestRevision.strategies[0].id,
+    strategyNameZh: logoTestRevision.strategies[0].nameZh,
+    grammarId: logoTestRevision.strategies[0].grammarId,
+    candidateIndex: 0,
+    logoType: logoTestBrief.logoType,
+    designRevisionSnapshot: logoTestRevision,
+    promptDirectionSnapshot: logoTestPromptPack.directions[0],
+    briefSnapshot: logoTestBrief,
+    qualityRulesVersion: 2,
+    qualityRetryAttempt: 0
   },
   promptOriginal: 'logo final prompt',
   promptFinal: 'logo final prompt',
@@ -293,7 +294,7 @@ describe('AppShell', () => {
     )
   })
 
-  it('opens the general edit form when continuing from a logo result', async () => {
+  it('keeps logo refinement inside the logo workflow', async () => {
     installBloomCanvasApi({
       providers: {
         list: vi.fn().mockResolvedValue({ ok: true, data: [provider] }),
@@ -322,19 +323,39 @@ describe('AppShell', () => {
         save: vi.fn(),
         get: vi.fn(),
         remove: vi.fn()
+      },
+      logoPreview: {
+        get: vi.fn().mockResolvedValue({
+          ok: true,
+          data: {
+            assetId: 'logo-asset-1',
+            localCheck: {
+              decodable: true,
+              blank: false,
+              lowContrast: false,
+              width: 1024,
+              height: 1024
+            },
+            whiteBackgroundDataUrl: 'data:image/png;base64,white',
+            blackBackgroundDataUrl: 'data:image/png;base64,black',
+            size64DataUrl: 'data:image/png;base64,64',
+            size32DataUrl: 'data:image/png;base64,32',
+            grayscaleDataUrl: 'data:image/png;base64,gray',
+            monochromeDataUrl: 'data:image/png;base64,mono',
+            inverseDataUrl: 'data:image/png;base64,inverse'
+          }
+        })
       }
     })
 
     render(<AppShell />)
 
     fireEvent.click(await screen.findByText('Logo 设计'))
-    fireEvent.click(await screen.findByRole('button', { name: '继续修改' }))
 
-    expect(await screen.findByLabelText('提示词')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: '参考图 1' })).toHaveAttribute(
-      'src',
-      'bloom-canvas://thumbnail/logo-asset-1'
-    )
+    expect(await screen.findByLabelText('修改要求')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: '保持结构' })).toBeChecked()
+    expect(screen.queryByRole('button', { name: '继续修改' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('提示词')).not.toBeInTheDocument()
   })
 
   it('does not leak a general draft reference into logo design', async () => {

@@ -282,7 +282,7 @@ export interface SaveLogoProjectInput {
   generationMode?: LogoGenerationMode
   aiReviewEnabled?: boolean
   autoQualityRetry?: boolean
-  selectedCandidateId?: VariantId
+  selectedCandidateId?: VariantId | null
   candidateReviews?: Record<string, LogoCandidateReview>
 }
 

@@ -261,7 +261,6 @@ function WorkbenchShell(): React.JSX.Element {
             referenceAssets={logoReferenceAssets}
             settings={settings}
             onCreated={handleGenerationCreated}
-            onContinueEdit={handleContinueEdit}
             onDelete={handleDeleteGeneration}
             onDeleteVariants={handleDeleteVariants}
             onError={setError}

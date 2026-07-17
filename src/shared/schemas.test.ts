@@ -219,6 +219,22 @@ describe('logo schemas', () => {
     expect(() => buildLogoPromptPackSchema.parse(input)).toThrow()
   })
 
+  test('preserves whether the selected logo candidate was omitted or explicitly cleared', () => {
+    const input = {
+      brandName: '生花',
+      industry: 'AI 绘图软件',
+      businessDescription: '帮助创作者用 AI 生成图片',
+      brandKeywords: ['清晰'],
+      logoTypes: ['combination-mark'],
+      referenceImageIds: []
+    }
+
+    expect(saveLogoProjectSchema.parse(input).selectedCandidateId).toBeUndefined()
+    expect(
+      saveLogoProjectSchema.parse({ ...input, selectedCandidateId: null }).selectedCandidateId
+    ).toBeNull()
+  })
+
   test('rejects more than four style directions', () => {
     expect(() =>
       saveLogoProjectSchema.parse({

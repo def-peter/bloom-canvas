@@ -25,7 +25,11 @@ vi.mock('../../api/bloomCanvasClient', () => ({
       generate: vi.fn()
     },
     logoPrompt: {
-      buildStrategy: vi.fn()
+      buildStrategy: vi.fn(),
+      buildRefinement: vi.fn()
+    },
+    logoPreview: {
+      get: vi.fn()
     },
     logoReview: {
       run: vi.fn()
@@ -175,7 +179,6 @@ function renderWorkflow(overrides: Partial<ComponentProps<typeof LogoWorkflowPan
         project={project}
         settings={null}
         onCreated={vi.fn()}
-        onContinueEdit={vi.fn()}
         onDelete={vi.fn()}
         onDeleteVariants={vi.fn()}
         onError={vi.fn()}
@@ -203,6 +206,10 @@ describe('LogoWorkflowPanel', () => {
       usageScenarios: input.usageScenarios ?? [],
       preferredColors: input.preferredColors ?? [],
       avoidedColors: input.avoidedColors ?? [],
+      selectedCandidateId:
+        input.selectedCandidateId === null
+          ? undefined
+          : (input.selectedCandidateId ?? project.selectedCandidateId),
       generationIds: project.generationIds,
       favoriteVariantIds: project.favoriteVariantIds,
       createdAt: project.createdAt,
@@ -219,6 +226,23 @@ describe('LogoWorkflowPanel', () => {
       unavailableReasonZh: '当前供应商未执行 AI 视觉评审'
     }))
     vi.mocked(bloomCanvasClient.logoProjects.get).mockResolvedValue(project)
+    vi.mocked(bloomCanvasClient.logoPreview.get).mockResolvedValue({
+      assetId: 'asset-1',
+      localCheck: {
+        decodable: true,
+        blank: false,
+        lowContrast: false,
+        width: 1024,
+        height: 1024
+      },
+      whiteBackgroundDataUrl: 'data:image/png;base64,white',
+      blackBackgroundDataUrl: 'data:image/png;base64,black',
+      size64DataUrl: 'data:image/png;base64,64',
+      size32DataUrl: 'data:image/png;base64,32',
+      grayscaleDataUrl: 'data:image/png;base64,gray',
+      monochromeDataUrl: 'data:image/png;base64,mono',
+      inverseDataUrl: 'data:image/png;base64,inverse'
+    })
     vi.mocked(bloomCanvasClient.generations.create).mockImplementation(async (input) =>
       generationRecordFromInput(
         input,
@@ -257,11 +281,9 @@ describe('LogoWorkflowPanel', () => {
     expect(screen.getByRole('button', { name: '生成 Logo 初稿' })).toBeDisabled()
   })
 
-  test('continues editing the selected candidate from the refinement step', () => {
-    const onContinueEdit = vi.fn()
+  test('opens the in-workflow refinement controls for the selected candidate', async () => {
     renderWorkflow({
       generations: [generationWithCandidate],
-      onContinueEdit,
       project: {
         ...project,
         selectedCandidateId: 'variant-1',
@@ -269,9 +291,32 @@ describe('LogoWorkflowPanel', () => {
       }
     })
 
-    fireEvent.click(screen.getByRole('button', { name: '继续修改' }))
+    expect(await screen.findByLabelText('修改要求')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: '保持结构' })).toBeChecked()
+  })
 
-    expect(onContinueEdit).toHaveBeenCalledWith(generationWithCandidate.variants[0].asset)
+  test('falls back to generation when the selected candidate was deleted', async () => {
+    renderWorkflow({
+      generations: [],
+      project: {
+        ...project,
+        selectedCandidateId: 'missing-variant',
+        workflowStep: 'refinement',
+        designRevision: logoTestRevision,
+        strategyPromptPack: logoTestPromptPack
+      }
+    })
+
+    expect(screen.getByRole('heading', { name: '生成与筛选' })).toBeInTheDocument()
+    expect(await screen.findByText('已选候选不存在，请重新选择')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(bloomCanvasClient.logoProjects.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selectedCandidateId: null,
+          workflowStep: 'generation'
+        })
+      )
+    )
   })
 
   test('automatically retries one full batch only once when every vision review rejects', async () => {

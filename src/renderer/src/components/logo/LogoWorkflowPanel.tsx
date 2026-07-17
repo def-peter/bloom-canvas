@@ -2,6 +2,7 @@ import { Alert, Steps } from 'antd'
 import { useMemo, useState } from 'react'
 import type {
   LogoBrandBriefV2,
+  LogoCandidateReview,
   LogoDesignRevision,
   LogoDesignStrategy,
   LogoRenderStyle,
@@ -12,6 +13,7 @@ import type {
   AppSettings,
   Asset,
   GenerationRecord,
+  LogoGenerationMetadataV2,
   LogoGenerationMode,
   LogoProject,
   ProviderConfig,
@@ -30,6 +32,7 @@ import {
   type LogoBriefFormValues
 } from './logoFormUtils'
 import { runLogoGenerationBatch, type LogoBatchItem } from './logoGenerationBatch'
+import { buildQualityRetryPrompt, shouldAutoRetryQuality } from './logoQualityRetry'
 
 interface LogoWorkflowPanelProps {
   activeProvider: ProviderConfig | null
@@ -84,6 +87,7 @@ export function LogoWorkflowPanel({
   const [buildingStrategies, setBuildingStrategies] = useState(false)
   const [loadingStrategyId, setLoadingStrategyId] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [qualityRetrying, setQualityRetrying] = useState(false)
   const [batchItems, setBatchItems] = useState<LogoBatchItem[]>([])
 
   const selectedCandidate = useMemo(() => {
@@ -236,7 +240,8 @@ export function LogoWorkflowPanel({
     savedProject: LogoProject,
     strategy: LogoDesignStrategy,
     candidateIndex: number,
-    retryAttempt: 0 | 1 = 0
+    retryAttempt: 0 | 1 = 0,
+    promptOverride?: string
   ): Promise<GenerationRecord> {
     if (!activeProvider || !savedProject.designRevision || !savedProject.strategyPromptPack) {
       throw new Error('Logo 策略尚未准备完成')
@@ -245,9 +250,12 @@ export function LogoWorkflowPanel({
       (item) => item.strategyId === strategy.id
     )
     if (!direction) throw new Error(`缺少策略“${strategy.nameZh}”的提示词`)
+    const promptDirectionSnapshot = promptOverride
+      ? { ...direction, customized: true, finalPrompt: promptOverride }
+      : direction
     const record = await bloomCanvasClient.generations.create({
       providerId: activeProvider.id,
-      prompt: direction.finalPrompt,
+      prompt: promptDirectionSnapshot.finalPrompt,
       useOptimizedPrompt: false,
       referenceAssetIds: savedProject.referenceImageIds,
       parameters: {
@@ -267,7 +275,7 @@ export function LogoWorkflowPanel({
         candidateIndex,
         logoType: savedProject.logoTypes[0],
         designRevisionSnapshot: savedProject.designRevision,
-        promptDirectionSnapshot: direction,
+        promptDirectionSnapshot,
         briefSnapshot: briefFromProject(savedProject),
         qualityRulesVersion: 2,
         qualityRetryAttempt: retryAttempt
@@ -275,6 +283,51 @@ export function LogoWorkflowPanel({
     })
     if (record.status === 'succeeded') await onCreated(record)
     return record
+  }
+
+  function mergeReview(review: LogoCandidateReview): void {
+    setWorkingProject((current) =>
+      current
+        ? {
+            ...current,
+            candidateReviews: {
+              ...(current.candidateReviews ?? {}),
+              [review.candidateId]: review
+            }
+          }
+        : current
+    )
+  }
+
+  async function reviewRecord(
+    savedProject: LogoProject,
+    record: GenerationRecord
+  ): Promise<LogoCandidateReview[]> {
+    if (!activeProvider) return []
+    return Promise.all(
+      record.variants.map(async (variant) => {
+        let review: LogoCandidateReview
+        try {
+          review = await bloomCanvasClient.logoReview.run({
+            providerId: activeProvider.id,
+            projectId: savedProject.id,
+            variantId: variant.id,
+            useVision: savedProject.aiReviewEnabled ?? true
+          })
+        } catch {
+          review = {
+            candidateId: variant.id,
+            status: 'unreviewed',
+            reviewMode: 'local-only',
+            hardFailures: [],
+            risksZh: [],
+            unavailableReasonZh: '当前供应商未执行 AI 视觉评审'
+          }
+        }
+        mergeReview(review)
+        return review
+      })
+    )
   }
 
   async function generate(input: { candidatesPerStrategy: 1 | 2 }): Promise<void> {
@@ -296,13 +349,61 @@ export function LogoWorkflowPanel({
         savedProject.designRevision?.selectedStrategyIds.includes(strategy.id)
       )
       if (!strategies?.length) throw new Error('没有可生成的 Logo 策略')
-      await runLogoGenerationBatch({
+      const initialReviews: LogoCandidateReview[] = []
+      const initialBatch = await runLogoGenerationBatch({
         strategies,
         candidatesPerStrategy: input.candidatesPerStrategy,
-        createCandidate: (strategy, candidateIndex) =>
-          createCandidate(savedProject, strategy, candidateIndex),
+        createCandidate: async (strategy, candidateIndex) => {
+          const record = await createCandidate(savedProject, strategy, candidateIndex)
+          initialReviews.push(...(await reviewRecord(savedProject, record)))
+          return record
+        },
         onProgress: setBatchItems
       })
+      const existingRetryAttempts = generations
+        .filter((generation) => generation.projectId === savedProject.id)
+        .map((generation) => generation.scenarioMetadata)
+        .filter(
+          (metadata): metadata is LogoGenerationMetadataV2 =>
+            metadata?.version === 2 &&
+            metadata.designRevisionSnapshot.createdAt === savedProject.designRevision?.createdAt
+        )
+        .map((metadata) => metadata.qualityRetryAttempt)
+      if (
+        initialBatch.records.length > 0 &&
+        shouldAutoRetryQuality({
+          enabled: savedProject.autoQualityRetry ?? true,
+          expectedCount: strategies.length * input.candidatesPerStrategy,
+          reviews: initialReviews,
+          existingRetryAttempts
+        })
+      ) {
+        setQualityRetrying(true)
+        try {
+          await runLogoGenerationBatch({
+            strategies,
+            candidatesPerStrategy: input.candidatesPerStrategy,
+            createCandidate: async (strategy, candidateIndex) => {
+              const direction = savedProject.strategyPromptPack?.directions.find(
+                (item) => item.strategyId === strategy.id
+              )
+              if (!direction) throw new Error(`缺少策略“${strategy.nameZh}”的提示词`)
+              const record = await createCandidate(
+                savedProject,
+                strategy,
+                candidateIndex,
+                1,
+                buildQualityRetryPrompt(direction, initialReviews)
+              )
+              await reviewRecord(savedProject, record)
+              return record
+            },
+            onProgress: setBatchItems
+          })
+        } finally {
+          setQualityRetrying(false)
+        }
+      }
       onError(null)
     } catch (error) {
       onError(error instanceof Error ? error.message : '生成 Logo 初稿失败')
@@ -431,11 +532,15 @@ export function LogoWorkflowPanel({
         ) : null}
         {currentStep === 2 && workingProject ? (
           <LogoGenerationStep
+            aiReviewEnabled={workingProject.aiReviewEnabled ?? true}
+            autoQualityRetry={workingProject.autoQualityRetry ?? true}
+            candidateReviews={workingProject.candidateReviews}
             generating={generating}
             generations={generations}
             items={batchItems}
             mode={mode}
             projectId={workingProject.id}
+            qualityRetrying={qualityRetrying}
             onDelete={onDelete}
             onDeleteVariants={onDeleteVariants}
             onExport={onExport}
@@ -443,6 +548,13 @@ export function LogoWorkflowPanel({
             onModeChange={(generationMode) => {
               setWorkingProject({ ...workingProject, generationMode })
               void saveProject({ ...workingProject, generationMode })
+            }}
+            onReviewSettingsChange={(patch) => {
+              const updated = { ...workingProject, ...patch }
+              setWorkingProject(updated)
+              void saveProject(updated).catch((error) =>
+                onError(error instanceof Error ? error.message : '保存评审设置失败')
+              )
             }}
             onRetryGeneration={onRetry}
             onRetryItem={retryItem}

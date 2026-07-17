@@ -18,6 +18,7 @@ vi.mock('../../api/bloomCanvasClient', () => ({
       create: vi.fn()
     },
     logoProjects: {
+      get: vi.fn(),
       save: vi.fn()
     },
     logoStrategy: {
@@ -25,6 +26,9 @@ vi.mock('../../api/bloomCanvasClient', () => ({
     },
     logoPrompt: {
       buildStrategy: vi.fn()
+    },
+    logoReview: {
+      run: vi.fn()
     }
   }
 }))
@@ -116,8 +120,11 @@ const generationWithCandidate: GenerationRecord = {
 }
 
 function generationRecordFromInput(input: CreateGenerationInput, index: number): GenerationRecord {
+  const generationId = `generation-${index}`
+  const variantId = `variant-${index}`
+  const assetId = `asset-${index}`
   return {
-    id: `generation-${index}`,
+    id: generationId,
     mode: 'text-to-image',
     scenario: input.scenario,
     projectId: input.projectId,
@@ -126,14 +133,36 @@ function generationRecordFromInput(input: CreateGenerationInput, index: number):
     promptFinal: input.prompt,
     referenceImageIds: input.referenceAssetIds,
     parameters: input.parameters,
-    outputVariantIds: [],
+    outputVariantIds: [variantId],
     providerId: input.providerId,
     status: 'succeeded',
     favorite: false,
     createdAt: '2026-07-13T00:00:00.000Z',
     updatedAt: '2026-07-13T00:00:00.000Z',
     references: [],
-    variants: []
+    variants: [
+      {
+        id: variantId,
+        generationId,
+        assetId,
+        index: input.scenarioMetadata?.version === 2 ? input.scenarioMetadata.candidateIndex : 0,
+        favorite: false,
+        createdAt: '2026-07-13T00:00:00.000Z',
+        asset: {
+          id: assetId,
+          type: 'output',
+          filePath: `/tmp/${assetId}.png`,
+          thumbnailPath: `/tmp/${assetId}-thumb.png`,
+          mimeType: 'image/png',
+          width: 1024,
+          height: 1024,
+          size: 1024,
+          sha256: `hash-${index}`,
+          createdAt: '2026-07-13T00:00:00.000Z',
+          sourceGenerationId: generationId
+        }
+      }
+    ]
   }
 }
 
@@ -181,6 +210,15 @@ describe('LogoWorkflowPanel', () => {
     }))
     vi.mocked(bloomCanvasClient.logoStrategy.generate).mockResolvedValue(logoTestRevision)
     vi.mocked(bloomCanvasClient.logoPrompt.buildStrategy).mockResolvedValue(logoTestPromptPack)
+    vi.mocked(bloomCanvasClient.logoReview.run).mockImplementation(async (input) => ({
+      candidateId: input.variantId,
+      status: 'unreviewed',
+      reviewMode: 'local-only',
+      hardFailures: [],
+      risksZh: [],
+      unavailableReasonZh: '当前供应商未执行 AI 视觉评审'
+    }))
+    vi.mocked(bloomCanvasClient.logoProjects.get).mockResolvedValue(project)
     vi.mocked(bloomCanvasClient.generations.create).mockImplementation(async (input) =>
       generationRecordFromInput(
         input,
@@ -201,6 +239,7 @@ describe('LogoWorkflowPanel', () => {
       expect(input.parameters.count).toBe(1)
       expect(input.scenarioMetadata?.version).toBe(2)
     }
+    expect(bloomCanvasClient.logoReview.run).toHaveBeenCalledTimes(6)
   })
 
   test('does not use a stale revision after the brief changes', () => {
@@ -233,5 +272,43 @@ describe('LogoWorkflowPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '继续修改' }))
 
     expect(onContinueEdit).toHaveBeenCalledWith(generationWithCandidate.variants[0].asset)
+  })
+
+  test('automatically retries one full batch only once when every vision review rejects', async () => {
+    vi.mocked(bloomCanvasClient.logoReview.run).mockImplementation(async (input) => ({
+      candidateId: input.variantId,
+      status: 'not-recommended',
+      reviewMode: 'vision-model',
+      scores: {
+        strategyFit: 40,
+        distinctiveness: 35,
+        simplicity: 48,
+        smallSizePotential: 42,
+        craft: 55
+      },
+      hardFailures: ['出现未要求的伪文字'],
+      risksZh: [],
+      revisionInstructionEn: 'Remove all pseudo-text.'
+    }))
+    renderWorkflow({
+      project: {
+        ...project,
+        workflowStep: 'strategy',
+        designRevision: logoTestRevision,
+        strategyPromptPack: logoTestPromptPack
+      }
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '生成 Logo 初稿' }))
+
+    await waitFor(() => expect(bloomCanvasClient.generations.create).toHaveBeenCalledTimes(12))
+    const retryInputs = vi
+      .mocked(bloomCanvasClient.generations.create)
+      .mock.calls.map(([input]) => input)
+      .filter(
+        (input) =>
+          input.scenarioMetadata?.version === 2 && input.scenarioMetadata.qualityRetryAttempt === 1
+      )
+    expect(retryInputs).toHaveLength(6)
   })
 })

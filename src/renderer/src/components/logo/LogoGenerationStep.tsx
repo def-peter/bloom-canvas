@@ -1,15 +1,21 @@
-import { Alert, Button, Progress, Segmented, Space, Typography } from 'antd'
+import { Alert, Button, Checkbox, Progress, Segmented, Space, Typography } from 'antd'
+import type { LogoCandidateReview } from '../../../../shared/logoDesign'
 import type { Asset, GenerationRecord, LogoGenerationMode } from '../../../../shared/types'
 import type { LogoBatchItem } from './logoGenerationBatch'
 import { LogoResultsPanel } from './LogoResultsPanel'
 
 interface LogoGenerationStepProps {
+  aiReviewEnabled: boolean
+  autoQualityRetry: boolean
+  candidateReviews?: Record<string, LogoCandidateReview>
   mode: LogoGenerationMode
   generating: boolean
+  qualityRetrying?: boolean
   items: LogoBatchItem[]
   generations: GenerationRecord[]
   projectId: string
   onModeChange: (mode: LogoGenerationMode) => void
+  onReviewSettingsChange: (patch: { aiReviewEnabled?: boolean; autoQualityRetry?: boolean }) => void
   onGenerate: (input: { candidatesPerStrategy: 1 | 2 }) => void
   onRetryItem: (item: LogoBatchItem) => void
   onSelectCandidate: (asset: Asset) => void
@@ -20,12 +26,17 @@ interface LogoGenerationStepProps {
 }
 
 export function LogoGenerationStep({
+  aiReviewEnabled,
+  autoQualityRetry,
+  candidateReviews,
   mode,
   generating,
+  qualityRetrying = false,
   items,
   generations,
   projectId,
   onModeChange,
+  onReviewSettingsChange,
   onGenerate,
   onRetryItem,
   onSelectCandidate,
@@ -59,7 +70,24 @@ export function LogoGenerationStep({
           value={mode}
           onChange={(value) => onModeChange(value as LogoGenerationMode)}
         />
+        <div className="logo-generation-review-settings">
+          <Checkbox
+            checked={aiReviewEnabled}
+            onChange={(event) => onReviewSettingsChange({ aiReviewEnabled: event.target.checked })}
+          >
+            AI 视觉评审
+          </Checkbox>
+          <Checkbox
+            checked={autoQualityRetry}
+            onChange={(event) => onReviewSettingsChange({ autoQualityRetry: event.target.checked })}
+          >
+            全部不合格时自动重试一次
+          </Checkbox>
+        </div>
         <Typography.Text type="secondary">预计生成 {candidateCount} 张候选图</Typography.Text>
+        <Typography.Text type="secondary">
+          {aiReviewEnabled ? '本轮将执行 AI 视觉评审' : '本轮仅执行本地可用性检查'}
+        </Typography.Text>
         <Button
           block
           disabled={generating}
@@ -113,8 +141,12 @@ export function LogoGenerationStep({
           })}
         </div>
       ) : null}
+      {qualityRetrying ? (
+        <Alert showIcon title="本轮结果均不建议继续，正在按评审原因自动重试 1 次" type="warning" />
+      ) : null}
       <Space orientation="vertical" size="large" style={{ width: '100%' }}>
         <LogoResultsPanel
+          candidateReviews={candidateReviews}
           generating={generating}
           generations={generations}
           selectedProjectId={projectId}

@@ -8,6 +8,8 @@ function renderStep(overrides: Partial<ComponentProps<typeof LogoGenerationStep>
   render(
     <App>
       <LogoGenerationStep
+        aiReviewEnabled
+        autoQualityRetry
         generating={false}
         generations={[]}
         items={[]}
@@ -18,6 +20,7 @@ function renderStep(overrides: Partial<ComponentProps<typeof LogoGenerationStep>
         onExport={vi.fn()}
         onGenerate={vi.fn()}
         onModeChange={vi.fn()}
+        onReviewSettingsChange={vi.fn()}
         onRetryGeneration={vi.fn()}
         onRetryItem={vi.fn()}
         onSelectCandidate={vi.fn()}
@@ -33,6 +36,18 @@ describe('LogoGenerationStep', () => {
 
     expect(screen.getByText('预计生成 6 张候选图')).toBeInTheDocument()
     expect(screen.queryByText(/¥|美元|预计费用/)).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'AI 视觉评审' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: '全部不合格时自动重试一次' })).toBeChecked()
+    expect(screen.getByText('本轮将执行 AI 视觉评审')).toBeInTheDocument()
+  })
+
+  test('saves review settings as soon as a checkbox changes', () => {
+    const onReviewSettingsChange = vi.fn()
+    renderStep({ onReviewSettingsChange })
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'AI 视觉评审' }))
+
+    expect(onReviewSettingsChange).toHaveBeenCalledWith({ aiReviewEnabled: false })
   })
 
   test('economy mode requests one candidate per strategy', () => {

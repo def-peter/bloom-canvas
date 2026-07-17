@@ -157,6 +157,25 @@ body {
   gap: 2px;
 }
 
+.history-meta {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+}
+
+.history-meta .ant-tag {
+  flex: none;
+  margin-inline-end: 0;
+}
+
+.history-meta .ant-typography {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .history-error-summary {
   min-width: 0;
   overflow: hidden;

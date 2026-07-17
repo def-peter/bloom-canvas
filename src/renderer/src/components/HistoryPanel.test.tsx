@@ -27,6 +27,30 @@ const failedGeneration: GenerationRecord = {
 }
 
 describe('HistoryPanel', () => {
+  it('labels history entries by creation source', () => {
+    const logoGeneration: GenerationRecord = {
+      ...failedGeneration,
+      id: 'logo-generation-1',
+      scenario: 'logo-design',
+      status: 'succeeded',
+      promptOriginal: '极简 Logo',
+      promptFinal: '极简 Logo',
+      errorMessage: undefined
+    }
+
+    render(
+      <HistoryPanel
+        generations={[failedGeneration, logoGeneration]}
+        selectedId={undefined}
+        onDelete={vi.fn()}
+        onSelect={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('通用创作')).toBeInTheDocument()
+    expect(screen.getByText('Logo 设计')).toBeInTheDocument()
+  })
+
   it('shows failed generations with an explicit failure label', () => {
     render(
       <HistoryPanel

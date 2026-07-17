@@ -7,7 +7,7 @@ interface LogoProjectPanelProps {
   generating: boolean
   projects: LogoProject[]
   selectedId: string | null
-  selectedProjectHasImages: boolean
+  selectedProjectImageCount: number
   onCreateNew: () => void
   onDelete: (projectId: string) => Promise<void>
   onSelect: (project: LogoProject) => void
@@ -17,7 +17,7 @@ export function LogoProjectPanel({
   generating,
   projects,
   selectedId,
-  selectedProjectHasImages,
+  selectedProjectImageCount,
   onCreateNew,
   onDelete,
   onSelect
@@ -47,16 +47,10 @@ export function LogoProjectPanel({
           <Button
             aria-label="删除项目"
             danger
-            disabled={!selectedProject || selectedProjectHasImages || generating}
+            disabled={!selectedProject || generating}
             icon={<DeleteOutlined />}
             size="small"
-            title={
-              generating
-                ? '生成完成后才能删除项目'
-                : selectedProjectHasImages
-                  ? '请先删除项目中的图片'
-                  : undefined
-            }
+            title={generating ? '生成完成后才能删除项目' : undefined}
             onClick={() => setDeleteOpen(true)}
           />
           <Button icon={<PlusOutlined />} size="small" type="primary" onClick={onCreateNew}>
@@ -85,12 +79,18 @@ export function LogoProjectPanel({
         okButtonProps={{ danger: true, disabled: generating }}
         okText="删除"
         open={deleteOpen}
-        title="删除 Logo 项目？"
+        title="删除 Logo 项目及图片？"
         onCancel={() => setDeleteOpen(false)}
         onOk={deleteSelectedProject}
       >
+        <Typography.Paragraph>项目：“{selectedProject?.brandName}”</Typography.Paragraph>
         <Typography.Paragraph>
-          将删除项目“{selectedProject?.brandName}”。参考图文件不会被删除。
+          {selectedProjectImageCount > 0
+            ? `将同步删除 ${selectedProjectImageCount} 张生成图片和相关历史记录。`
+            : '将删除该项目和相关历史记录。'}
+        </Typography.Paragraph>
+        <Typography.Paragraph type="secondary">
+          用户导入的参考图原文件会保留。此操作不可撤销。
         </Typography.Paragraph>
       </Modal>
     </aside>

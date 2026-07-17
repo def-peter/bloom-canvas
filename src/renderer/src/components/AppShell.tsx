@@ -165,13 +165,11 @@ function WorkbenchShell(): React.JSX.Element {
     }
   }
 
-  const selectedLogoProjectHasImages = Boolean(
-    selectedLogoProject &&
-    generations.some(
-      (generation) =>
-        generation.projectId === selectedLogoProject.id && generation.variants.length > 0
-    )
-  )
+  const selectedLogoProjectImageCount = selectedLogoProject
+    ? generations
+        .filter((generation) => generation.projectId === selectedLogoProject.id)
+        .reduce((count, generation) => count + generation.variants.length, 0)
+    : 0
 
   return (
     <Layout className="app-shell">
@@ -245,7 +243,7 @@ function WorkbenchShell(): React.JSX.Element {
             generating={generating}
             projects={logoProjects}
             selectedId={selectedLogoProject?.id ?? null}
-            selectedProjectHasImages={selectedLogoProjectHasImages}
+            selectedProjectImageCount={selectedLogoProjectImageCount}
             onCreateNew={() => {
               selectLogoProject(null)
               setLogoReferenceAssets([])

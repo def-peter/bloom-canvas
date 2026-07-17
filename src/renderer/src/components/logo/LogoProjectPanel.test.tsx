@@ -29,7 +29,7 @@ describe('LogoProjectPanel', () => {
         projects={[project]}
         generating={false}
         selectedId={null}
-        selectedProjectHasImages={false}
+        selectedProjectImageCount={0}
         onCreateNew={vi.fn()}
         onDelete={vi.fn()}
         onSelect={onSelect}
@@ -49,7 +49,7 @@ describe('LogoProjectPanel', () => {
         projects={[project]}
         generating={false}
         selectedId={project.id}
-        selectedProjectHasImages={false}
+        selectedProjectImageCount={0}
         onCreateNew={vi.fn()}
         onDelete={onDelete}
         onSelect={vi.fn()}
@@ -57,26 +57,33 @@ describe('LogoProjectPanel', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: '删除项目' }))
-    const dialog = await screen.findByRole('dialog', { name: '删除 Logo 项目？' })
+    const dialog = await screen.findByRole('dialog', { name: '删除 Logo 项目及图片？' })
+    expect(within(dialog).getByText('将删除该项目和相关历史记录。')).toBeInTheDocument()
     fireEvent.click(within(dialog).getByRole('button', { name: /删\s*除/ }))
 
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith(project.id))
   })
 
-  test('disables project deletion while images remain', () => {
+  test('confirms cascading deletion for a selected project with images', async () => {
     render(
       <LogoProjectPanel
         projects={[project]}
         generating={false}
         selectedId={project.id}
-        selectedProjectHasImages
+        selectedProjectImageCount={6}
         onCreateNew={vi.fn()}
         onDelete={vi.fn()}
         onSelect={vi.fn()}
       />
     )
 
-    expect(screen.getByRole('button', { name: '删除项目' })).toBeDisabled()
+    const deleteButton = screen.getByRole('button', { name: '删除项目' })
+    expect(deleteButton).toBeEnabled()
+    fireEvent.click(deleteButton)
+
+    const dialog = await screen.findByRole('dialog', { name: '删除 Logo 项目及图片？' })
+    expect(within(dialog).getByText('将同步删除 6 张生成图片和相关历史记录。')).toBeInTheDocument()
+    expect(within(dialog).getByText(/用户导入的参考图原文件会保留/)).toBeInTheDocument()
   })
 
   test('disables project deletion while a generation is running', () => {
@@ -85,7 +92,7 @@ describe('LogoProjectPanel', () => {
         generating
         projects={[project]}
         selectedId={project.id}
-        selectedProjectHasImages={false}
+        selectedProjectImageCount={0}
         onCreateNew={vi.fn()}
         onDelete={vi.fn()}
         onSelect={vi.fn()}

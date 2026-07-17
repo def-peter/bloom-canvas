@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid'
 import type { LogoBrandBriefV2, LogoCandidateReview } from '../../shared/logoDesign'
 import type {
+  Asset,
   GenerationId,
   LogoProject,
   LogoProjectId,
@@ -9,6 +10,7 @@ import type {
 } from '../../shared/types'
 import { avoidedElementsSchema } from '../../shared/schemas'
 import { createBriefFingerprint, createPromptFingerprint } from '../logo/logoBriefNormalizer'
+import { collectRetainedAssetIds, removeAssetFiles } from './assetRetention'
 import { buildLogoPromptPack } from './logoPromptCompiler'
 import type { StorageService } from './storageService'
 
@@ -66,6 +68,7 @@ export class LogoProjectService {
   }
 
   async remove(id: LogoProjectId): Promise<void> {
+    let removedAssets: Asset[] = []
     await this.storage.update((state) => {
       const project = state.logoProjects.find((item) => item.id === id)
       if (!project) throw new Error('Logo project not found')
@@ -79,19 +82,49 @@ export class LogoProjectService {
         throw new Error('Logo project generation is running')
       }
       const projectGenerationIds = new Set(projectGenerations.map((generation) => generation.id))
-      const hasImages = state.variants.some((variant) =>
+      const removedVariants = state.variants.filter((variant) =>
         projectGenerationIds.has(variant.generationId)
       )
-      if (hasImages) throw new Error('Logo project still has images')
+      const removedAssetIds = new Set([
+        ...removedVariants.map((variant) => variant.assetId),
+        ...state.assets
+          .filter(
+            (asset) =>
+              asset.type === 'output' &&
+              asset.sourceGenerationId &&
+              projectGenerationIds.has(asset.sourceGenerationId)
+          )
+          .map((asset) => asset.id)
+      ])
+      const nextGenerations = state.generations.filter(
+        (generation) => !projectGenerationIds.has(generation.id)
+      )
+      const nextVariants = state.variants.filter(
+        (variant) => !projectGenerationIds.has(variant.generationId)
+      )
+      const nextLogoProjects = state.logoProjects.filter((item) => item.id !== id)
+      const retainedAssetIds = collectRetainedAssetIds(
+        nextGenerations,
+        nextVariants,
+        nextLogoProjects
+      )
+      const deletedAssetIds = new Set(
+        [...removedAssetIds].filter((assetId) => !retainedAssetIds.has(assetId))
+      )
+      removedAssets = state.assets.filter(
+        (asset) => asset.type === 'output' && deletedAssetIds.has(asset.id)
+      )
 
       return {
         ...state,
-        generations: state.generations.filter(
-          (generation) => !projectGenerationIds.has(generation.id)
-        ),
-        logoProjects: state.logoProjects.filter((item) => item.id !== id)
+        assets: state.assets.filter((asset) => !deletedAssetIds.has(asset.id)),
+        generations: nextGenerations,
+        variants: nextVariants,
+        logoProjects: nextLogoProjects
       }
     })
+
+    await removeAssetFiles(removedAssets)
   }
 
   async save(input: SaveLogoProjectInput): Promise<LogoProject> {

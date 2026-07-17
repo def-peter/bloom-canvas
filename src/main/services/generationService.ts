@@ -1,4 +1,3 @@
-import { rm } from 'fs/promises'
 import { nanoid } from 'nanoid'
 import type {
   Asset,
@@ -8,6 +7,7 @@ import type {
   Variant
 } from '../../shared/types'
 import type { AssetService } from './assetService'
+import { collectRetainedAssetIds, removeAssetFiles } from './assetRetention'
 import type { OpenAICompatibleProvider } from './openAICompatibleProvider'
 import type { ProviderConfigService } from './providerConfigService'
 import type { StorageService } from './storageService'
@@ -199,7 +199,7 @@ export class GenerationService {
 
         return changed ? { ...project, favoriteVariantIds, generationIds, updatedAt: now } : project
       })
-      const retainedAssetIds = this.collectRetainedAssetIds(
+      const retainedAssetIds = collectRetainedAssetIds(
         nextGenerations,
         nextVariants,
         nextLogoProjects
@@ -222,7 +222,7 @@ export class GenerationService {
       }
     })
 
-    await this.removeAssetFiles(removedAssets)
+    await removeAssetFiles(removedAssets)
   }
 
   async removeVariants(variantIds: string[]): Promise<void> {
@@ -277,7 +277,7 @@ export class GenerationService {
 
         return changed ? { ...project, favoriteVariantIds, generationIds, updatedAt: now } : project
       })
-      const retainedAssetIds = this.collectRetainedAssetIds(
+      const retainedAssetIds = collectRetainedAssetIds(
         nextGenerations,
         nextVariants,
         nextLogoProjects
@@ -300,28 +300,7 @@ export class GenerationService {
       }
     })
 
-    await this.removeAssetFiles(removedAssets)
-  }
-
-  private collectRetainedAssetIds(
-    generations: Generation[],
-    variants: Variant[],
-    logoProjects: Array<{ referenceImageIds: string[] }>
-  ): Set<string> {
-    return new Set([
-      ...variants.map((variant) => variant.assetId),
-      ...generations.flatMap((generation) => generation.referenceImageIds),
-      ...logoProjects.flatMap((project) => project.referenceImageIds)
-    ])
-  }
-
-  private async removeAssetFiles(assets: Asset[]): Promise<void> {
-    await Promise.all(
-      assets.flatMap((asset) => [
-        rm(asset.filePath, { force: true }),
-        rm(asset.thumbnailPath, { force: true })
-      ])
-    )
+    await removeAssetFiles(removedAssets)
   }
 
   private hydrateGeneration(

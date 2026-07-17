@@ -5,7 +5,7 @@ import {
   StarFilled,
   StarOutlined
 } from '@ant-design/icons'
-import { Button, Empty, Input, List, Modal, Segmented, Space, Typography } from 'antd'
+import { Button, Empty, Input, List, Modal, Segmented, Space, Tag, Typography } from 'antd'
 import { useMemo, useState } from 'react'
 import { thumbnailProtocolUrl } from '../../../shared/assetProtocol'
 import type { GenerationRecord } from '../../../shared/types'
@@ -107,15 +107,25 @@ export function HistoryPanel({
                 </div>
                 <div className="history-content">
                   <Typography.Text ellipsis>{generation.promptFinal}</Typography.Text>
-                  {failureSummary ? (
-                    <span className="history-error-summary" title={failureSummary}>
-                      生成失败 · {failureSummary}
-                    </span>
-                  ) : (
-                    <Typography.Text type="secondary">
-                      {new Date(generation.createdAt).toLocaleString()}
-                    </Typography.Text>
-                  )}
+                  <div className="history-meta">
+                    <Tag color={generation.scenario === 'logo-design' ? 'cyan' : 'default'}>
+                      {generation.scenario === 'logo-design' ? 'Logo 设计' : '通用创作'}
+                    </Tag>
+                    {failureSummary ? (
+                      <span className="history-error-summary" title={failureSummary}>
+                        生成失败 · {failureSummary}
+                      </span>
+                    ) : (
+                      <Typography.Text type="secondary">
+                        {new Date(generation.createdAt).toLocaleString(undefined, {
+                          month: 'numeric',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </Typography.Text>
+                    )}
+                  </div>
                 </div>
                 <Space size={2} onClick={(event) => event.stopPropagation()}>
                   <Button

@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'fs/promises'
+import { access, mkdtemp, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
@@ -586,11 +586,52 @@ describe('LogoProjectService', () => {
     expect(state.logoProjects).toEqual([])
   })
 
-  test('rejects removal while a logo project still has an image variant', async () => {
-    const project = legacyProject({ generationIds: ['generation-1'] })
-    await seedProject(project)
-    await storage.update((state) => ({
-      ...state,
+  test('cascades project generations and outputs while preserving imported references', async () => {
+    const project = legacyProject({
+      generationIds: ['generation-1'],
+      referenceImageIds: ['reference-1']
+    })
+    const outputPath = join(paths.outputsDir, 'logo.webp')
+    const outputThumbnailPath = join(paths.thumbnailsDir, 'logo.webp')
+    const referencePath = join(paths.referencesDir, 'reference.png')
+    const referenceThumbnailPath = join(paths.thumbnailsDir, 'reference.png')
+    await storage.init()
+    await Promise.all([
+      writeFile(outputPath, 'output'),
+      writeFile(outputThumbnailPath, 'output thumbnail'),
+      writeFile(referencePath, 'reference'),
+      writeFile(referenceThumbnailPath, 'reference thumbnail')
+    ])
+    await storage.write({
+      providers: [],
+      settings: defaultSettings,
+      assets: [
+        {
+          id: 'asset-1',
+          type: 'output',
+          filePath: outputPath,
+          thumbnailPath: outputThumbnailPath,
+          mimeType: 'image/webp',
+          width: 1024,
+          height: 1024,
+          size: 6,
+          sha256: 'output-hash',
+          createdAt: '2026-07-09T00:00:00.000Z',
+          sourceGenerationId: 'generation-1'
+        },
+        {
+          id: 'reference-1',
+          type: 'reference',
+          filePath: referencePath,
+          thumbnailPath: referenceThumbnailPath,
+          mimeType: 'image/png',
+          width: 512,
+          height: 512,
+          size: 9,
+          sha256: 'reference-hash',
+          createdAt: '2026-07-09T00:00:00.000Z'
+        }
+      ],
       generations: [
         {
           id: 'generation-1',
@@ -599,7 +640,7 @@ describe('LogoProjectService', () => {
           projectId: project.id,
           promptOriginal: 'logo prompt',
           promptFinal: 'logo prompt',
-          referenceImageIds: [],
+          referenceImageIds: ['reference-1'],
           parameters: {
             size: '1024x1024',
             count: 1,
@@ -623,13 +664,113 @@ describe('LogoProjectService', () => {
           favorite: false,
           createdAt: '2026-07-09T00:00:00.000Z'
         }
-      ]
-    }))
+      ],
+      logoProjects: [project]
+    })
 
-    await expect(service.remove(project.id)).rejects.toThrow(/still has images/i)
+    await service.remove(project.id)
 
     const state = await storage.read()
-    expect(state.logoProjects.map((item) => item.id)).toEqual([project.id])
+    expect(state.logoProjects).toEqual([])
+    expect(state.generations).toEqual([])
+    expect(state.variants).toEqual([])
+    expect(state.assets.map((asset) => asset.id)).toEqual(['reference-1'])
+    await expect(access(outputPath)).rejects.toThrow()
+    await expect(access(outputThumbnailPath)).rejects.toThrow()
+    await expect(access(referencePath)).resolves.toBeUndefined()
+    await expect(access(referenceThumbnailPath)).resolves.toBeUndefined()
+  })
+
+  test('retains a project output that another generation uses as a reference', async () => {
+    const project = legacyProject({ generationIds: ['generation-1'] })
+    const outputPath = join(paths.outputsDir, 'shared.webp')
+    const outputThumbnailPath = join(paths.thumbnailsDir, 'shared.webp')
+    await storage.init()
+    await Promise.all([
+      writeFile(outputPath, 'shared output'),
+      writeFile(outputThumbnailPath, 'shared thumbnail')
+    ])
+    await storage.write({
+      providers: [],
+      settings: defaultSettings,
+      assets: [
+        {
+          id: 'asset-1',
+          type: 'output',
+          filePath: outputPath,
+          thumbnailPath: outputThumbnailPath,
+          mimeType: 'image/webp',
+          width: 1024,
+          height: 1024,
+          size: 13,
+          sha256: 'shared-hash',
+          createdAt: '2026-07-09T00:00:00.000Z',
+          sourceGenerationId: 'generation-1'
+        }
+      ],
+      generations: [
+        {
+          id: 'generation-1',
+          mode: 'text-to-image',
+          scenario: 'logo-design',
+          projectId: project.id,
+          promptOriginal: 'logo prompt',
+          promptFinal: 'logo prompt',
+          referenceImageIds: [],
+          parameters: {
+            size: '1024x1024',
+            count: 1,
+            quality: 'standard',
+            outputFormat: 'png'
+          },
+          outputVariantIds: ['variant-1'],
+          providerId: 'provider-1',
+          status: 'succeeded',
+          favorite: false,
+          createdAt: '2026-07-09T00:00:00.000Z',
+          updatedAt: '2026-07-09T00:00:00.000Z'
+        },
+        {
+          id: 'general-generation',
+          mode: 'image-to-image',
+          scenario: 'general',
+          promptOriginal: 'continue editing',
+          promptFinal: 'continue editing',
+          referenceImageIds: ['asset-1'],
+          parameters: {
+            size: '1024x1024',
+            count: 1,
+            quality: 'standard',
+            outputFormat: 'png'
+          },
+          outputVariantIds: [],
+          providerId: 'provider-1',
+          status: 'failed',
+          favorite: false,
+          createdAt: '2026-07-09T00:00:00.000Z',
+          updatedAt: '2026-07-09T00:00:00.000Z'
+        }
+      ],
+      variants: [
+        {
+          id: 'variant-1',
+          generationId: 'generation-1',
+          assetId: 'asset-1',
+          index: 0,
+          favorite: false,
+          createdAt: '2026-07-09T00:00:00.000Z'
+        }
+      ],
+      logoProjects: [project]
+    })
+
+    await service.remove(project.id)
+
+    const state = await storage.read()
+    expect(state.generations.map((generation) => generation.id)).toEqual(['general-generation'])
+    expect(state.assets.map((asset) => asset.id)).toEqual(['asset-1'])
+    await expect(access(outputPath)).resolves.toBeUndefined()
+    await expect(access(outputThumbnailPath)).resolves.toBeUndefined()
   })
 
   test('rejects removal while the project has a running generation', async () => {

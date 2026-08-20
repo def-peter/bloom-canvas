@@ -24,20 +24,20 @@ jobs:
         with:
           node-version: 22
 
-      - name: Set up pnpm
-        run: npm install --global pnpm@11.22.0
+      - name: Enable Yarn
+        run: corepack enable
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Lint
-        run: pnpm run lint
+        run: yarn lint
 
       - name: Type-check
-        run: pnpm run typecheck
+        run: yarn typecheck
 
       - name: Test
-        run: pnpm run test:run
+        run: yarn test:run
 
   package:
     name: ${{ matrix.label }}
@@ -72,17 +72,17 @@ jobs:
         with:
           node-version: 22
 
-      - name: Set up pnpm
-        run: npm install --global pnpm@11.22.0
+      - name: Enable Yarn
+        run: corepack enable
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Build application
-        run: pnpm exec electron-vite build
+        run: yarn electron-vite build
 
       - name: Build installer
-        run: pnpm exec electron-builder ${{ matrix.build-args }} --publish never
+        run: yarn electron-builder ${{ matrix.build-args }} --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 

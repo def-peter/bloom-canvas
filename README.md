@@ -34,7 +34,7 @@ Bloom Canvas (生花) turns prompts, reference images, and brand briefs into an 
 
 - macOS, Windows, or Linux
 - [Node.js](https://nodejs.org/) `^20.19.0` or `>=22.12.0`
-- [pnpm](https://pnpm.io/) 11
+- [Yarn](https://yarnpkg.com/) 4
 - An API key for an OpenAI-compatible image provider
 
 ## Getting Started
@@ -43,8 +43,8 @@ Bloom Canvas (生花) turns prompts, reference images, and brand briefs into an 
 git clone https://github.com/def-peter/bloom-canvas.git
 cd bloom-canvas
 corepack enable
-pnpm install
-pnpm dev
+yarn install
+yarn dev
 ```
 
 Open **Provider Settings** in the application and configure:
@@ -63,14 +63,14 @@ The provider must support `POST /images/generations` and, for reference-image ed
 
 | Command            | Description                                     |
 | ------------------ | ----------------------------------------------- |
-| `pnpm dev`         | Start the Electron app in development mode      |
-| `pnpm test:run`    | Run the test suite once                         |
-| `pnpm lint`        | Run ESLint                                      |
-| `pnpm typecheck`   | Type-check the main, preload, and renderer code |
-| `pnpm build`       | Type-check and create the production bundle     |
-| `pnpm build:mac`   | Build the macOS package                         |
-| `pnpm build:win`   | Build the Windows package                       |
-| `pnpm build:linux` | Build the Linux packages                        |
+| `yarn dev`         | Start the Electron app in development mode      |
+| `yarn test:run`    | Run the test suite once                         |
+| `yarn lint`        | Run ESLint                                      |
+| `yarn typecheck`   | Type-check the main, preload, and renderer code |
+| `yarn build`       | Type-check and create the production bundle     |
+| `yarn build:mac`   | Build the macOS package                         |
+| `yarn build:win`   | Build the Windows package                       |
+| `yarn build:linux` | Build the Linux packages                        |
 
 The application uses Electron, React, TypeScript, Ant Design, electron-vite, Vitest, and Sharp. The renderer communicates through a typed preload API; provider requests, credentials, and file operations remain in the Electron main process.
 
@@ -96,9 +96,9 @@ Bloom Canvas helps explore and refine logo directions; it is not a replacement f
 Issues and pull requests are welcome. Before opening a large feature pull request, start with an issue so the scope and product direction can be discussed. Please run the following checks before submitting changes:
 
 ```bash
-pnpm test:run
-pnpm lint
-pnpm typecheck
+yarn test:run
+yarn lint
+yarn typecheck
 ```
 
 ## License

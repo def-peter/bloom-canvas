@@ -23,26 +23,34 @@
   },
   "license": "MIT",
   "author": "def-peter",
-  "packageManager": "pnpm@11.22.0",
+  "packageManager": "yarn@4.18.0",
   "engines": {
     "node": "^20.19.0 || >=22.12.0",
-    "pnpm": ">=11.0.0"
+    "yarn": ">=4.0.0"
+  },
+  "dependenciesMeta": {
+    "electron": {
+      "built": true
+    },
+    "esbuild": {
+      "built": true
+    }
   },
   "main": "./out/main/index.js",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",
     "test": "vitest",
-    "test:run": "vitest run",
+    "test:run": "vitest run --maxWorkers=4",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
-    "typecheck": "pnpm run typecheck:node && pnpm run typecheck:web",
+    "typecheck": "yarn typecheck:node && yarn typecheck:web",
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
-    "build": "pnpm run typecheck && electron-vite build",
+    "build": "yarn typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
-    "build:unpack": "pnpm run build && electron-builder --dir",
-    "build:win": "pnpm run build && electron-builder --win",
+    "build:unpack": "yarn build && electron-builder --dir",
+    "build:win": "yarn build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux"
   },
@@ -60,6 +68,7 @@
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
     "@electron-toolkit/eslint-config-ts": "^3.1.0",
     "@electron-toolkit/tsconfig": "^2.0.0",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^22.19.1",

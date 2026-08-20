@@ -1,7 +1,7 @@
 # Dependencies and package-manager caches
 node_modules/
 .npm/
-.pnpm-store/
+.yarn/
 
 # Build, test, and package output
 dist/

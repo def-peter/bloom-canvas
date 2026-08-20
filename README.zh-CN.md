@@ -34,7 +34,7 @@ Bloom Canvas（生花）将提示词、参考图和品牌简报组织成清晰�
 
 - macOS、Windows 或 Linux
 - [Node.js](https://nodejs.org/) `^20.19.0` 或 `>=22.12.0`
-- [pnpm](https://pnpm.io/) 11
+- [Yarn](https://yarnpkg.com/) 4
 - OpenAI-compatible 图像服务的 API Key
 
 ## 快速开始
@@ -43,8 +43,8 @@ Bloom Canvas（生花）将提示词、参考图和品牌简报组织成清晰�
 git clone https://github.com/def-peter/bloom-canvas.git
 cd bloom-canvas
 corepack enable
-pnpm install
-pnpm dev
+yarn install
+yarn dev
 ```
 
 启动应用后，打开「Provider 设置」并填写以下内容：
@@ -63,14 +63,14 @@ Provider 必须支持 `POST /images/generations`；如需使用参考图编辑�
 
 | 命令               | 说明                                    |
 | ------------------ | --------------------------------------- |
-| `pnpm dev`         | 以开发模式启动 Electron 应用            |
-| `pnpm test:run`    | 单次运行完整测试                        |
-| `pnpm lint`        | 运行 ESLint                             |
-| `pnpm typecheck`   | 检查 Main、Preload 和 Renderer 代码类型 |
-| `pnpm build`       | 类型检查并生成生产构建                  |
-| `pnpm build:mac`   | 构建 macOS 安装包                       |
-| `pnpm build:win`   | 构建 Windows 安装包                     |
-| `pnpm build:linux` | 构建 Linux 安装包                       |
+| `yarn dev`         | 以开发模式启动 Electron 应用            |
+| `yarn test:run`    | 单次运行完整测试                        |
+| `yarn lint`        | 运行 ESLint                             |
+| `yarn typecheck`   | 检查 Main、Preload 和 Renderer 代码类型 |
+| `yarn build`       | 类型检查并生成生产构建                  |
+| `yarn build:mac`   | 构建 macOS 安装包                       |
+| `yarn build:win`   | 构建 Windows 安装包                     |
+| `yarn build:linux` | 构建 Linux 安装包                       |
 
 项目使用 Electron、React、TypeScript、Ant Design、electron-vite、Vitest 和 Sharp。Renderer 通过类型化的 Preload API 通信；Provider 请求、凭据和文件操作均由 Electron Main 进程处理。
 
@@ -96,9 +96,9 @@ Bloom Canvas 用于探索和优化 Logo 创意方向，不能代替专业矢量�
 欢迎提交 Issue 和 Pull Request。准备开发大型功能前，建议先创建 Issue，讨论范围和产品方向。提交改动前请运行：
 
 ```bash
-pnpm test:run
-pnpm lint
-pnpm typecheck
+yarn test:run
+yarn lint
+yarn typecheck
 ```
 
 ## 许可证

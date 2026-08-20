@@ -73,7 +73,7 @@ export async function verifyPackagedApp(outputDirectory) {
     }
   }
 
-  const installers = files.filter((file) => /\.(?:dmg|exe|zip)$/i.test(file))
+  const installers = files.filter((file) => /(?:\.dmg|\.zip|-setup\.exe)$/i.test(file))
   for (const installer of installers) {
     const { size } = await stat(installer)
     if (size > MAX_INSTALLER_SIZE_BYTES) {

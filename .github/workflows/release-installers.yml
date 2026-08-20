@@ -1,0 +1,97 @@
+name: Build release installers
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-installers-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    name: Release checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Type-check
+        run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm run test:run
+
+  package:
+    name: ${{ matrix.label }}
+    needs: checks
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Windows 11 compatible (x64)
+            runner: windows-2025
+            build-args: --win nsis --x64
+            artifact-name: bloom-canvas-windows-x64
+            artifact-path: dist/*-windows-x64-setup.exe
+          - label: macOS Intel (x64)
+            runner: macos-15-intel
+            build-args: --mac dmg --x64
+            artifact-name: bloom-canvas-macos-x64
+            artifact-path: dist/*-mac-x64.dmg
+          - label: macOS Apple Silicon (arm64)
+            runner: macos-15
+            build-args: --mac dmg --arm64
+            artifact-name: bloom-canvas-macos-arm64
+            artifact-path: dist/*-mac-arm64.dmg
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build application
+        run: pnpm exec electron-vite build
+
+      - name: Build installer
+        run: pnpm exec electron-builder ${{ matrix.build-args }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-path }}
+          if-no-files-found: error
+          retention-days: 30

@@ -1,18 +1,17 @@
-appId: com.electron.app
+appId: com.defpeter.bloomcanvas
 productName: 绽画
 directories:
   buildResources: build
 files:
-  - '!**/.vscode/*'
-  - '!src/*'
-  - '!electron.vite.config.{js,ts,mjs,cjs}'
-  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
-  - '!{.env,.env.*,yarn.lock,.yarnrc.yml}'
-  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - out/**/*
+  - package.json
+  - resources/**/*
+  - '!node_modules/electron{,/**/*}'
 asarUnpack:
   - resources/**
 win:
   executableName: 绽画
+  icon: build/icon.ico
 nsis:
   artifactName: ${name}-${version}-windows-${arch}-setup.${ext}
   shortcutName: ${productName}
@@ -20,6 +19,7 @@ nsis:
   createDesktopShortcut: always
 mac:
   artifactName: ${name}-${version}-mac-${arch}.${ext}
+  icon: build/icon.icns
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.

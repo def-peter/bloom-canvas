@@ -1,14 +1,17 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { access } from 'node:fs/promises'
+import { app, shell, BrowserWindow, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { autoUpdater } from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
 import { IPC_CHANNELS } from '../shared/ipc'
 import {
+  APP_ID,
   configureApplicationName,
   configureDockIcon,
   getMainWindowIdentityOptions
 } from './applicationIdentity'
+import { migrateLegacyMacApplication } from './legacyApplicationMigration'
 import { registerIpcHandlers } from './ipc/registerIpcHandlers'
 import { registerUpdateIpcHandlers } from './ipc/registerUpdateIpcHandlers'
 import { registerAssetProtocolHandler, registerAssetProtocolScheme } from './protocol/assetProtocol'
@@ -56,11 +59,43 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  try {
+    await migrateLegacyMacApplication({
+      platform: process.platform,
+      isPackaged: app.isPackaged,
+      currentExecutablePath: process.execPath,
+      homeDirectory: app.getPath('home'),
+      pathExists: async (path) => {
+        try {
+          await access(path)
+          return true
+        } catch {
+          return false
+        }
+      },
+      confirmRemoval: async () => {
+        const { response } = await dialog.showMessageBox({
+          type: 'info',
+          title: '发现旧版 bloom-canvas',
+          message: '是否将旧版 bloom-canvas 移到废纸篓？',
+          detail: '旧版使用旧名称和图标。作品、设置和 API 配置保存在单独目录，不会被删除。',
+          buttons: ['移到废纸篓', '暂时保留'],
+          defaultId: 0,
+          cancelId: 1
+        })
+        return response === 0
+      },
+      trashItem: (path) => shell.trashItem(path)
+    })
+  } catch (error) {
+    console.warn('Failed to migrate the legacy macOS application.', error)
+  }
+
   configureDockIcon(app, process.platform, icon)
 
   // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
+  electronApp.setAppUserModelId(APP_ID)
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.

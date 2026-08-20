@@ -1,4 +1,5 @@
 export const APP_DISPLAY_NAME = '绽画'
+export const APP_ID = 'com.defpeter.bloomcanvas'
 
 interface ApplicationNameHost {
   getPath(name: 'userData'): string

@@ -110,6 +110,9 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
+      - name: Verify packaged application
+        run: yarn verify:package
+
       - name: Upload installer
         uses: actions/upload-artifact@v7
         with:

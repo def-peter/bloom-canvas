@@ -48,7 +48,7 @@ export function UpdateCenter(): React.JSX.Element {
     void bloomCanvasClient.updates.install()
   }
 
-  const title = status.availableVersion ? `生花 ${status.availableVersion}` : '软件更新'
+  const title = status.availableVersion ? `绽画 ${status.availableVersion}` : '软件更新'
 
   return (
     <>
@@ -115,7 +115,7 @@ export function UpdateCenter(): React.JSX.Element {
           {status.phase === 'downloaded' && (
             <>
               <Typography.Title level={5}>更新已下载完成</Typography.Title>
-              <Typography.Text>重启生花以安装 {status.availableVersion}。</Typography.Text>
+              <Typography.Text>重启绽画以安装 {status.availableVersion}。</Typography.Text>
               <Button icon={<ReloadOutlined />} type="primary" onClick={installUpdate}>
                 重启并安装
               </Button>

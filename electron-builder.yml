@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: bloom-canvas
+productName: 绽画
 directories:
   buildResources: build
 files:
@@ -12,7 +12,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: bloom-canvas
+  executableName: 绽画
 nsis:
   artifactName: ${name}-${version}-windows-${arch}-setup.${ext}
   shortcutName: ${productName}

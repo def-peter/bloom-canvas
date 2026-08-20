@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="build/icon.png" alt="Bloom Canvas icon" width="96" height="96">
-  <h1>Bloom Canvas</h1>
+  <img src="build/icon.png" alt="绽画 icon" width="96" height="96">
+  <h1>绽画</h1>
   <p>An open-source desktop workspace for AI image creation, prompt refinement, and structured logo exploration.</p>
 
   <p>
@@ -16,10 +16,10 @@
   </p>
 </div>
 
-Bloom Canvas (生花) turns prompts, reference images, and brand briefs into an organized image-generation workflow. It runs locally, connects to OpenAI-compatible providers, and keeps provider settings, generation history, and image assets on your device.
+绽画 turns prompts, reference images, and brand briefs into an organized image-generation workflow. It runs locally, connects to OpenAI-compatible providers, and keeps provider settings, generation history, and image assets on your device.
 
 > [!NOTE]
-> Bloom Canvas is under active development. The application interface is currently primarily in Simplified Chinese; English localization is planned. There are no official binary releases yet, so the project must currently be run from source.
+> 绽画 is under active development and currently uses a primarily Simplified Chinese interface. Installers are available from [GitHub Releases](https://github.com/def-peter/bloom-canvas/releases/latest), or the project can be run from source.
 
 ## Features
 
@@ -76,7 +76,7 @@ The application uses Electron, React, TypeScript, Ant Design, electron-vite, Vit
 
 ## Local Data and Privacy
 
-Bloom Canvas does not require a Bloom Canvas account or cloud backend. Application metadata and images are stored under Electron's per-user application data directory in `BloomCanvasData`. API keys are encrypted at rest with a locally generated key and are not written into the regular provider configuration.
+绽画 does not require an account or cloud backend. Application metadata and images remain in the compatibility data directory `BloomCanvasData` under Electron's per-user application data directory. API keys are encrypted at rest with a locally generated key and are not written into the regular provider configuration.
 
 Prompts and images are sent to the provider you configure when you request generation, editing, prompt refinement, or strategy assistance. Review that provider's privacy and retention policies before using sensitive material.
 
@@ -86,10 +86,10 @@ Current priorities include:
 
 - English and Simplified Chinese interface localization
 - A more complete strategy-driven logo workflow
-- Release packaging, signing, and downloadable builds
+- Installer signing and automatic-update improvements
 - Documentation for provider compatibility and contribution workflows
 
-Bloom Canvas helps explore and refine logo directions; it is not a replacement for professional vector production, typography, trademark clearance, or legal review. Validate AI-generated logo drafts before commercial use.
+绽画 helps explore and refine logo directions; it is not a replacement for professional vector production, typography, trademark clearance, or legal review. Validate AI-generated logo drafts before commercial use.
 
 ## Contributing
 
@@ -103,4 +103,4 @@ yarn typecheck
 
 ## License
 
-Bloom Canvas is available under the [MIT License](LICENSE).
+绽画 is available under the [MIT License](LICENSE).

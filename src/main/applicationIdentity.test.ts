@@ -7,7 +7,7 @@ import {
 } from './applicationIdentity'
 
 describe('application identity', () => {
-  it('uses the BloomCanvas product name without moving existing user data', () => {
+  it('uses the 绽画 product name without moving existing user data', () => {
     const events: string[] = []
     const app = {
       getPath: (name: 'userData') => {
@@ -20,10 +20,10 @@ describe('application identity', () => {
 
     configureApplicationName(app)
 
-    expect(APP_DISPLAY_NAME).toBe('BloomCanvas')
+    expect(APP_DISPLAY_NAME).toBe('绽画')
     expect(events).toEqual([
       'getPath:userData',
-      'setName:BloomCanvas',
+      'setName:绽画',
       'setPath:userData:/existing/user-data'
     ])
   })
@@ -56,10 +56,10 @@ describe('application identity', () => {
 
   it('provides the product title on every platform and keeps the Linux window icon', () => {
     expect(getMainWindowIdentityOptions('darwin', '/resources/icon.png')).toEqual({
-      title: 'BloomCanvas'
+      title: '绽画'
     })
     expect(getMainWindowIdentityOptions('linux', '/resources/icon.png')).toEqual({
-      title: 'BloomCanvas',
+      title: '绽画',
       icon: '/resources/icon.png'
     })
   })

@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="build/icon.png" alt="Bloom Canvas 图标" width="96" height="96">
-  <h1>Bloom Canvas / 生花</h1>
+  <img src="build/icon.png" alt="绽画图标" width="96" height="96">
+  <h1>绽画</h1>
   <p>面向 AI 图像创作、提示词优化和结构化 Logo 探索的开源桌面工作台。</p>
 
   <p>
@@ -16,10 +16,10 @@
   </p>
 </div>
 
-Bloom Canvas（生花）将提示词、参考图和品牌简报组织成清晰的图像生成流程。应用在本地运行，可连接 OpenAI-compatible Provider，并将 Provider 设置、生成历史和图片资源保存在用户设备上。
+绽画将提示词、参考图和品牌简报组织成清晰的图像生成流程。应用在本地运行，可连接 OpenAI-compatible Provider，并将 Provider 设置、生成历史和图片资源保存在用户设备上。
 
 > [!NOTE]
-> Bloom Canvas 正在持续开发。目前应用界面以简体中文为主，英文国际化已经列入后续计划。项目暂未提供正式安装包，需要从源码运行。
+> 绽画正在持续开发，目前应用界面以简体中文为主。可以从 [GitHub Releases](https://github.com/def-peter/bloom-canvas/releases/latest) 下载安装包，也可以从源码运行。
 
 ## 功能特性
 
@@ -76,7 +76,7 @@ Provider 必须支持 `POST /images/generations`；如需使用参考图编辑�
 
 ## 本地数据与隐私
 
-Bloom Canvas 不要求注册账号，也不依赖 Bloom Canvas 云端服务。应用元数据和图片保存在 Electron 的用户应用数据目录下，具体位于 `BloomCanvasData`。API Key 使用本地生成的密钥加密保存，不会写入普通 Provider 配置。
+绽画不要求注册账号，也不依赖绽画云端服务。应用元数据和图片保存在 Electron 的用户应用数据目录下，具体位于兼容目录 `BloomCanvasData`。API Key 使用本地生成的密钥加密保存，不会写入普通 Provider 配置。
 
 发起图片生成、图片编辑、提示词优化或策略辅助时，应用会将提示词和相关图片发送给用户配置的 Provider。处理敏感资料前，请先阅读对应 Provider 的隐私和数据保留政策。
 
@@ -86,10 +86,10 @@ Bloom Canvas 不要求注册账号，也不依赖 Bloom Canvas 云端服务。�
 
 - 英文和简体中文界面国际化
 - 完善策略驱动的 Logo 工作流
-- 应用打包、签名和可下载版本
+- 完善安装包签名与自动更新体验
 - Provider 兼容性与贡献流程文档
 
-Bloom Canvas 用于探索和优化 Logo 创意方向，不能代替专业矢量制版、字体设计、商标检索或法律审查。将 AI 生成的 Logo 初稿用于商业场景前，请完成必要的验证。
+绽画用于探索和优化 Logo 创意方向，不能代替专业矢量制版、字体设计、商标检索或法律审查。将 AI 生成的 Logo 初稿用于商业场景前，请完成必要的验证。
 
 ## 参与贡献
 
@@ -103,4 +103,4 @@ yarn typecheck
 
 ## 许可证
 
-Bloom Canvas 使用 [MIT License](LICENSE) 开源。
+绽画使用 [MIT License](LICENSE) 开源。

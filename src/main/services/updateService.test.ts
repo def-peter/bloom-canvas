@@ -19,7 +19,7 @@ function updateInfo(version = '1.1.0'): UpdateInfo {
     path: 'bloom-canvas.zip',
     sha512: 'sha512',
     releaseDate: '2026-08-20T00:00:00.000Z',
-    releaseName: `Bloom Canvas ${version}`,
+    releaseName: `绽画 ${version}`,
     releaseNotes: '更新说明'
   }
 }

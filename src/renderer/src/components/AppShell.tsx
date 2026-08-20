@@ -176,8 +176,8 @@ function WorkbenchShell(): React.JSX.Element {
     <Layout className="app-shell">
       <Header className="app-header">
         <div className="brand-block">
-          <Typography.Title level={3}>生花</Typography.Title>
-          <Typography.Text>BloomCanvas</Typography.Text>
+          <Typography.Title level={3}>绽画</Typography.Title>
+          <Typography.Text>AI 图像工作台</Typography.Text>
         </div>
         <div className="header-controls">
           <Segmented

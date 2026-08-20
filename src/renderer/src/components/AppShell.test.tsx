@@ -216,11 +216,11 @@ describe('AppShell', () => {
     installBloomCanvasApi()
   })
 
-  it('renders the BloomCanvas workbench shell after loading data', async () => {
+  it('renders the 绽画 workbench shell after loading data', async () => {
     render(<AppShell />)
 
-    await waitFor(() => expect(screen.getByText('生花')).toBeInTheDocument())
-    expect(screen.getByText('BloomCanvas')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('绽画')).toBeInTheDocument())
+    expect(screen.getByText('AI 图像工作台')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /provider 设置/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '检查更新' })).toBeInTheDocument()
   })

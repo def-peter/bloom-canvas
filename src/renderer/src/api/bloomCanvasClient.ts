@@ -22,7 +22,7 @@ function requireApiMethod<T extends (...args: never[]) => Promise<AppResult<unkn
 ): T {
   if (typeof method !== 'function') {
     throw new BloomCanvasClientError(
-      `${featureName}需要重新加载应用接口。请完全退出并重新打开生花后再试。`,
+      `${featureName}需要重新加载应用接口。请完全退出并重新打开绽画后再试。`,
       'preload_api_mismatch'
     )
   }

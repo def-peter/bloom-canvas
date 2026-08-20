@@ -1,6 +1,6 @@
 export const logoTypeOptions = [
   {
-    description: '图形符号和品牌名称一起出现，例如一个简洁图标 + “生花 / BloomCanvas”。',
+    description: '图形符号和品牌名称一起出现，例如一个简洁图标 + “绽画”。',
     label: '图标 + 品牌名',
     value: 'combination-mark'
   },
@@ -10,7 +10,7 @@ export const logoTypeOptions = [
     value: 'symbol-mark'
   },
   {
-    description: '主要设计完整品牌名的字体和字形，例如“生花”或“BloomCanvas”。',
+    description: '主要设计完整品牌名的字体和字形，例如“绽画”。',
     label: '品牌全名文字',
     value: 'wordmark'
   },

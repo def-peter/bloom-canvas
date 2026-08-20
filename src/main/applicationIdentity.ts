@@ -1,4 +1,4 @@
-export const APP_DISPLAY_NAME = 'BloomCanvas'
+export const APP_DISPLAY_NAME = '绽画'
 
 interface ApplicationNameHost {
   getPath(name: 'userData'): string

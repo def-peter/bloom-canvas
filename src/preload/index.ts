@@ -2,6 +2,20 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IPC_CHANNELS, type BloomCanvasApi } from '../shared/ipc'
 
 const bloomCanvasApi: BloomCanvasApi = {
+  updates: {
+    getStatus: () => ipcRenderer.invoke(IPC_CHANNELS.updateGetStatus),
+    check: () => ipcRenderer.invoke(IPC_CHANNELS.updateCheck),
+    download: () => ipcRenderer.invoke(IPC_CHANNELS.updateDownload),
+    install: () => ipcRenderer.invoke(IPC_CHANNELS.updateInstall),
+    onStatusChanged: (listener) => {
+      const handler = (
+        _event: Electron.IpcRendererEvent,
+        status: Parameters<typeof listener>[0]
+      ): void => listener(status)
+      ipcRenderer.on(IPC_CHANNELS.updateStatusChanged, handler)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.updateStatusChanged, handler)
+    }
+  },
   providers: {
     list: () => ipcRenderer.invoke(IPC_CHANNELS.providerList),
     save: (input) => ipcRenderer.invoke(IPC_CHANNELS.providerSave, input),

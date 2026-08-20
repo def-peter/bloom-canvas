@@ -51,10 +51,46 @@ export const IPC_CHANNELS = {
   logoPromptBuildStrategy: 'logoPrompt:buildStrategy',
   logoPromptBuildRefinement: 'logoPrompt:buildRefinement',
   logoPreviewGet: 'logoPreview:get',
-  logoReviewRun: 'logoReview:run'
+  logoReviewRun: 'logoReview:run',
+  updateGetStatus: 'update:getStatus',
+  updateCheck: 'update:check',
+  updateDownload: 'update:download',
+  updateInstall: 'update:install',
+  updateStatusChanged: 'update:statusChanged'
 } as const
 
+export type UpdatePhase =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'not-available'
+  | 'downloading'
+  | 'downloaded'
+  | 'error'
+  | 'unsupported'
+
+export interface AppUpdateStatus {
+  phase: UpdatePhase
+  currentVersion: string
+  availableVersion?: string
+  releaseName?: string
+  releaseNotes?: string
+  percent?: number
+  bytesPerSecond?: number
+  transferred?: number
+  total?: number
+  message?: string
+  checkedAt?: string
+}
+
 export interface BloomCanvasApi {
+  updates: {
+    getStatus: () => Promise<AppResult<AppUpdateStatus>>
+    check: () => Promise<AppResult<AppUpdateStatus>>
+    download: () => Promise<AppResult<AppUpdateStatus>>
+    install: () => Promise<AppResult<void>>
+    onStatusChanged: (listener: (status: AppUpdateStatus) => void) => () => void
+  }
   providers: {
     list: () => Promise<AppResult<ProviderConfig[]>>
     save: (input: SaveProviderInput) => Promise<AppResult<ProviderConfig>>

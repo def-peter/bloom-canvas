@@ -22,6 +22,7 @@ import { HistoryPanel } from './HistoryPanel'
 import { LogoProjectPanel } from './logo/LogoProjectPanel'
 import { LogoWorkflowPanel } from './logo/LogoWorkflowPanel'
 import { ProviderSettingsModal } from './ProviderSettingsModal'
+import { UpdateCenter } from './UpdateCenter'
 
 const { Header } = Layout
 
@@ -199,6 +200,7 @@ function WorkbenchShell(): React.JSX.Element {
             value={activeProvider?.id}
             onChange={handleProviderChange}
           />
+          <UpdateCenter />
           <Button icon={<SettingOutlined />} onClick={() => setProviderModalOpen(true)}>
             Provider 设置
           </Button>

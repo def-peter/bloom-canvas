@@ -299,6 +299,7 @@ export interface AppErrorPayload {
     | 'provider_error'
     | 'file_error'
     | 'validation_error'
+    | 'update_error'
     | 'unknown_error'
   message: string
   detail?: string

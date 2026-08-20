@@ -1,16 +1,20 @@
 import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { autoUpdater } from 'electron-updater'
 import icon from '../../resources/icon.png?asset'
+import { IPC_CHANNELS } from '../shared/ipc'
 import {
   configureApplicationName,
   configureDockIcon,
   getMainWindowIdentityOptions
 } from './applicationIdentity'
 import { registerIpcHandlers } from './ipc/registerIpcHandlers'
+import { registerUpdateIpcHandlers } from './ipc/registerUpdateIpcHandlers'
 import { registerAssetProtocolHandler, registerAssetProtocolScheme } from './protocol/assetProtocol'
 import { getAppPaths } from './services/appPaths'
 import { StorageService } from './services/storageService'
+import { UpdateService } from './services/updateService'
 
 registerAssetProtocolScheme()
 configureApplicationName(app)
@@ -65,10 +69,24 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  const updateService = new UpdateService({
+    updater: autoUpdater,
+    currentVersion: app.getVersion(),
+    isPackaged: app.isPackaged,
+    broadcast: (status) => {
+      for (const window of BrowserWindow.getAllWindows()) {
+        window.webContents.send(IPC_CHANNELS.updateStatusChanged, status)
+      }
+    }
+  })
+
   registerIpcHandlers()
+  registerUpdateIpcHandlers(updateService)
   registerAssetProtocolHandler(new StorageService(getAppPaths()))
 
   createWindow()
+  updateService.initialize()
+  if (app.isPackaged) void updateService.checkForUpdates()
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

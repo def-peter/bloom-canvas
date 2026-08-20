@@ -1,6 +1,6 @@
 {
   "name": "bloom-canvas",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "An open-source desktop workspace for AI image creation, prompt refinement, and structured logo exploration.",
   "keywords": [
@@ -88,6 +88,7 @@
     "react-dom": "^19.2.1",
     "typescript": "^5.9.3",
     "vite": "^7.2.6",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "yaml": "^2.8.1"
   }
 }

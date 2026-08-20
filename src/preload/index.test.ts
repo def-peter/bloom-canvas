@@ -10,6 +10,19 @@ describe('preload bridge', () => {
     expect(source).toContain("contextBridge.exposeInMainWorld('bloomCanvas'")
   })
 
+  it('exposes update commands and a removable status subscription', async () => {
+    const [ipcSource, preloadSource] = await Promise.all([
+      readFile(join(process.cwd(), 'src/shared/ipc.ts'), 'utf8'),
+      readFile(join(process.cwd(), 'src/preload/index.ts'), 'utf8')
+    ])
+
+    expect(ipcSource).toContain("updateCheck: 'update:check'")
+    expect(ipcSource).toContain("updateStatusChanged: 'update:statusChanged'")
+    expect(preloadSource).toContain('IPC_CHANNELS.updateDownload')
+    expect(preloadSource).toContain('IPC_CHANNELS.updateInstall')
+    expect(preloadSource).toContain('ipcRenderer.removeListener(IPC_CHANNELS.updateStatusChanged')
+  })
+
   it('exposes logo project and strategy APIs on their matching IPC channels', async () => {
     const [ipcSource, preloadSource] = await Promise.all([
       readFile(join(process.cwd(), 'src/shared/ipc.ts'), 'utf8'),

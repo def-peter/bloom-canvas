@@ -30,6 +30,14 @@ function requireApiMethod<T extends (...args: never[]) => Promise<AppResult<unkn
 }
 
 export const bloomCanvasClient = {
+  updates: {
+    getStatus: () => unwrapResult(window.bloomCanvas.updates.getStatus()),
+    check: () => unwrapResult(window.bloomCanvas.updates.check()),
+    download: () => unwrapResult(window.bloomCanvas.updates.download()),
+    install: () => unwrapResult(window.bloomCanvas.updates.install()),
+    onStatusChanged: (listener: Parameters<typeof window.bloomCanvas.updates.onStatusChanged>[0]) =>
+      window.bloomCanvas.updates.onStatusChanged(listener)
+  },
   providers: {
     list: () => unwrapResult(window.bloomCanvas.providers.list()),
     save: (input: Parameters<typeof window.bloomCanvas.providers.save>[0]) =>

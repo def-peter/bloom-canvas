@@ -134,6 +134,19 @@ const logoGeneratedRecordWithVariant: GenerationRecord = {
 
 function installBloomCanvasApi(overrides: Partial<BloomCanvasApi> = {}): BloomCanvasApi {
   const api: BloomCanvasApi = {
+    updates: {
+      getStatus: vi.fn().mockResolvedValue({
+        ok: true,
+        data: { phase: 'unsupported', currentVersion: '1.0.0' }
+      }),
+      check: vi.fn().mockResolvedValue({
+        ok: true,
+        data: { phase: 'unsupported', currentVersion: '1.0.0' }
+      }),
+      download: vi.fn(),
+      install: vi.fn(),
+      onStatusChanged: vi.fn().mockReturnValue(() => undefined)
+    },
     providers: {
       list: vi.fn().mockResolvedValue({ ok: true, data: [] }),
       save: vi.fn(),
@@ -209,6 +222,33 @@ describe('AppShell', () => {
     await waitFor(() => expect(screen.getByText('生花')).toBeInTheDocument())
     expect(screen.getByText('BloomCanvas')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /provider 设置/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '检查更新' })).toBeInTheDocument()
+  })
+
+  it('checks for updates from the header control', async () => {
+    const check = vi.fn().mockResolvedValue({
+      ok: true,
+      data: { phase: 'not-available', currentVersion: '1.1.0' }
+    })
+    installBloomCanvasApi({
+      updates: {
+        getStatus: vi.fn().mockResolvedValue({
+          ok: true,
+          data: { phase: 'idle', currentVersion: '1.1.0' }
+        }),
+        check,
+        download: vi.fn(),
+        install: vi.fn(),
+        onStatusChanged: vi.fn().mockReturnValue(() => undefined)
+      }
+    })
+    render(<AppShell />)
+
+    fireEvent.click(await screen.findByRole('button', { name: '检查更新' }))
+
+    await waitFor(() => expect(check).toHaveBeenCalledOnce())
+    expect(await screen.findByText('当前已是最新版本')).toBeInTheDocument()
+    expect(screen.getByText('当前版本 1.1.0')).toBeInTheDocument()
   })
 
   it('switches between general creation and logo design scenes', async () => {

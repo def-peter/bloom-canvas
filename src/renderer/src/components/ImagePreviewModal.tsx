@@ -23,13 +23,29 @@ export function ImagePreviewModal({
   const variant = generation && variantIndex !== null ? generation.variants[variantIndex] : null
 
   return (
-    <Modal centered footer={null} open={open} title="预览" width="80vw" onCancel={onClose}>
+    <Modal
+      centered
+      classNames={{ container: 'preview-modal-container', body: 'preview-modal-content' }}
+      footer={null}
+      open={open}
+      title="预览"
+      width="min(1120px, calc(100vw - 32px))"
+      onCancel={onClose}
+    >
       {variant ? (
         <div className="preview-modal-body">
-          <img alt={generation?.promptFinal ?? ''} src={assetProtocolUrl(variant.assetId)} />
-          <Space orientation="vertical" size={12}>
-            <Typography.Paragraph copyable>{generation?.promptFinal}</Typography.Paragraph>
-            <Space>
+          <div className="preview-modal-canvas">
+            <img
+              className="preview-modal-image"
+              alt={generation?.promptFinal ?? ''}
+              src={assetProtocolUrl(variant.assetId)}
+            />
+          </div>
+          <div className="preview-modal-details">
+            <Typography.Paragraph className="preview-modal-prompt" copyable>
+              {generation?.promptFinal}
+            </Typography.Paragraph>
+            <Space className="preview-modal-actions" size={[8, 8]} wrap>
               <Button icon={<EditOutlined />} onClick={() => onContinueEdit(variant.asset)}>
                 继续修改
               </Button>
@@ -38,7 +54,7 @@ export function ImagePreviewModal({
               </Button>
               <Button icon={<StarOutlined />}>收藏</Button>
             </Space>
-          </Space>
+          </div>
         </div>
       ) : null}
     </Modal>

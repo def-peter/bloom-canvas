@@ -13,4 +13,15 @@ describe('renderer Content Security Policy', () => {
 
     expect(imgSrc?.split(/\s+/)).toContain('bloom-canvas:')
   })
+
+  it('allows bundled fonts inlined by the production build', async () => {
+    const html = await readFile(join(process.cwd(), 'src/renderer/index.html'), 'utf8')
+    const csp = html.match(/http-equiv="Content-Security-Policy"[\s\S]*?content="([^"]+)"/)?.[1]
+    const fontSrc = csp
+      ?.split(';')
+      .map((directive) => directive.trim())
+      .find((directive) => directive.startsWith('font-src'))
+
+    expect(fontSrc?.split(/\s+/)).toEqual(expect.arrayContaining(["'self'", 'data:']))
+  })
 })

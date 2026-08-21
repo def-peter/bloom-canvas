@@ -23,4 +23,13 @@ describe('electron-builder application identity', () => {
     expect(config.mac.icon).toBe('build/icon.icns')
     expect(config.win.icon).toBe('build/icon.ico')
   })
+
+  it('ships third-party font licenses as readable application resources', async () => {
+    const config = parse(await readFile(resolve('electron-builder.yml'), 'utf8'))
+
+    expect(config.extraResources).toContainEqual({
+      from: 'resources/licenses',
+      to: 'licenses'
+    })
+  })
 })

@@ -9,6 +9,9 @@ files:
   - '!node_modules/electron{,/**/*}'
 asarUnpack:
   - resources/**
+extraResources:
+  - from: resources/licenses
+    to: licenses
 win:
   executableName: 绽画
   icon: build/icon.ico

@@ -220,6 +220,8 @@ describe('AppShell', () => {
     render(<AppShell />)
 
     await waitFor(() => expect(screen.getByText('绽画')).toBeInTheDocument())
+    expect(screen.getByRole('img', { name: '绽画 Logo' })).toBeInTheDocument()
+    expect(screen.getByText('绽画')).toHaveClass('brand-title')
     expect(screen.getByText('AI 图像工作台')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /provider 设置/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '检查更新' })).toBeInTheDocument()

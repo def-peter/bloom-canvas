@@ -10,6 +10,7 @@ import {
   Typography
 } from 'antd'
 import { useEffect, useState } from 'react'
+import appIconUrl from '../../../../build/icon.png'
 import { bloomCanvasClient } from '../api/bloomCanvasClient'
 import { useWorkbenchStore } from '../state/workbenchStore'
 import { bloomTheme } from '../theme'
@@ -176,8 +177,13 @@ function WorkbenchShell(): React.JSX.Element {
     <Layout className="app-shell">
       <Header className="app-header">
         <div className="brand-block">
-          <Typography.Title level={3}>绽画</Typography.Title>
-          <Typography.Text>AI 图像工作台</Typography.Text>
+          <img className="brand-logo" src={appIconUrl} alt="绽画 Logo" />
+          <div className="brand-lockup">
+            <Typography.Title className="brand-title" level={3}>
+              绽画
+            </Typography.Title>
+            <Typography.Text className="brand-tagline">AI 图像工作台</Typography.Text>
+          </div>
         </div>
         <div className="header-controls">
           <Segmented

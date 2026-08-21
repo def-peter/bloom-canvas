@@ -206,10 +206,10 @@ function WorkbenchShell(): React.JSX.Element {
             value={activeProvider?.id}
             onChange={handleProviderChange}
           />
-          <UpdateCenter />
           <Button icon={<SettingOutlined />} onClick={() => setProviderModalOpen(true)}>
             Provider 设置
           </Button>
+          <UpdateCenter />
         </div>
       </Header>
       <ErrorNotice error={error} onClose={() => setError(null)} />

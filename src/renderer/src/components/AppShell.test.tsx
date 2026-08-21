@@ -224,10 +224,11 @@ describe('AppShell', () => {
     expect(screen.getByText('绽画')).toHaveClass('brand-title')
     expect(screen.getByText('AI 图像工作台')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /provider 设置/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '检查更新' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '关于' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '检查更新' })).not.toBeInTheDocument()
   })
 
-  it('checks for updates from the header control', async () => {
+  it('checks for updates from the about dialog', async () => {
     const check = vi.fn().mockResolvedValue({
       ok: true,
       data: { phase: 'not-available', currentVersion: '1.1.0' }
@@ -246,11 +247,15 @@ describe('AppShell', () => {
     })
     render(<AppShell />)
 
-    fireEvent.click(await screen.findByRole('button', { name: '检查更新' }))
+    fireEvent.click(await screen.findByRole('button', { name: '关于' }))
+    expect(await screen.findByText('关于绽画')).toBeInTheDocument()
+    const aboutDialog = screen.getByRole('dialog')
+    expect(within(aboutDialog).getByText('版本 1.1.0')).toBeInTheDocument()
+    fireEvent.click(within(aboutDialog).getByRole('button', { name: '检查更新' }))
 
     await waitFor(() => expect(check).toHaveBeenCalledOnce())
-    expect(await screen.findByText('当前已是最新版本')).toBeInTheDocument()
-    expect(screen.getByText('当前版本 1.1.0')).toBeInTheDocument()
+    expect(await within(aboutDialog).findByText('当前已是最新版本')).toBeInTheDocument()
+    expect(within(aboutDialog).getByText('当前版本 1.1.0')).toBeInTheDocument()
   })
 
   it('switches between general creation and logo design scenes', async () => {

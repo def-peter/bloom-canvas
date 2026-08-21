@@ -1,6 +1,12 @@
-import { DownloadOutlined, ReloadOutlined, SyncOutlined } from '@ant-design/icons'
-import { Button, Modal, Progress, Space, Spin, Tooltip, Typography } from 'antd'
+import {
+  DownloadOutlined,
+  InfoCircleOutlined,
+  ReloadOutlined,
+  SyncOutlined
+} from '@ant-design/icons'
+import { Button, Divider, Modal, Progress, Space, Spin, Typography } from 'antd'
 import { useEffect, useState } from 'react'
+import appIconUrl from '../../../../build/icon.png'
 import type { AppUpdateStatus } from '../../../shared/ipc'
 import { bloomCanvasClient } from '../api/bloomCanvasClient'
 
@@ -48,93 +54,118 @@ export function UpdateCenter(): React.JSX.Element {
     void bloomCanvasClient.updates.install()
   }
 
-  const title = status.availableVersion ? `绽画 ${status.availableVersion}` : '软件更新'
-
   return (
     <>
-      <Tooltip title="检查更新">
-        <Button
-          aria-label="检查更新"
-          disabled={status.phase === 'checking' || status.phase === 'downloading'}
-          icon={<SyncOutlined spin={status.phase === 'checking'} />}
-          shape="circle"
-          type="text"
-          onClick={checkForUpdates}
-        />
-      </Tooltip>
+      <Button aria-label="关于" icon={<InfoCircleOutlined />} onClick={() => setOpen(true)}>
+        关于
+      </Button>
       <Modal
         centered
         footer={null}
         open={open}
-        title={title}
-        width={480}
+        title="关于绽画"
+        width={500}
         onCancel={() => setOpen(false)}
       >
-        <div className="update-modal-content">
-          {status.phase === 'idle' && (
-            <Button icon={<SyncOutlined />} type="primary" onClick={checkForUpdates}>
-              检查更新
-            </Button>
-          )}
-          {status.phase === 'checking' && (
-            <Space>
-              <Spin size="small" />
-              <Typography.Text>正在检查更新...</Typography.Text>
-            </Space>
-          )}
-          {status.phase === 'not-available' && (
-            <>
-              <Typography.Title level={5}>当前已是最新版本</Typography.Title>
-              <Typography.Text type="secondary">当前版本 {status.currentVersion}</Typography.Text>
-            </>
-          )}
-          {status.phase === 'available' && (
-            <>
-              <Typography.Text>
-                新版本 {status.availableVersion} 已可下载，当前版本为 {status.currentVersion}。
+        <div className="about-modal-content">
+          <div className="about-product">
+            <img className="about-product-logo" src={appIconUrl} alt="绽画 Logo" />
+            <div className="about-product-copy">
+              <Typography.Title level={3}>绽画</Typography.Title>
+              <Typography.Text>AI 图像工作台</Typography.Text>
+              <Typography.Text className="about-version" type="secondary">
+                版本 {status.currentVersion || '--'}
               </Typography.Text>
-              {status.releaseNotes && (
-                <Typography.Paragraph className="update-release-notes">
-                  {status.releaseNotes}
-                </Typography.Paragraph>
-              )}
-              <Button icon={<DownloadOutlined />} type="primary" onClick={downloadUpdate}>
-                下载更新
+            </div>
+          </div>
+          <Divider size="small" />
+          <section className="update-modal-content" aria-labelledby="software-update-title">
+            <Typography.Title id="software-update-title" level={5}>
+              软件更新
+            </Typography.Title>
+            {status.phase === 'idle' && (
+              <Button
+                aria-label="检查更新"
+                icon={<SyncOutlined />}
+                type="primary"
+                onClick={checkForUpdates}
+              >
+                检查更新
               </Button>
-            </>
-          )}
-          {status.phase === 'downloading' && (
-            <>
-              <Typography.Text>正在下载 {status.availableVersion}...</Typography.Text>
-              <Progress percent={Math.round(status.percent ?? 0)} status="active" />
-              <Typography.Text type="secondary">
-                {formatBytes(status.transferred)} / {formatBytes(status.total)}
-              </Typography.Text>
-            </>
-          )}
-          {status.phase === 'downloaded' && (
-            <>
-              <Typography.Title level={5}>更新已下载完成</Typography.Title>
-              <Typography.Text>重启绽画以安装 {status.availableVersion}。</Typography.Text>
-              <Button icon={<ReloadOutlined />} type="primary" onClick={installUpdate}>
-                重启并安装
-              </Button>
-            </>
-          )}
-          {status.phase === 'error' && (
-            <>
-              <Typography.Text type="danger">{status.message ?? '检查更新失败'}</Typography.Text>
-              <Button icon={<SyncOutlined />} onClick={checkForUpdates}>
-                重试
-              </Button>
-            </>
-          )}
-          {status.phase === 'unsupported' && (
-            <>
-              <Typography.Title level={5}>开发环境不检查更新</Typography.Title>
-              <Typography.Text type="secondary">安装正式版本后即可使用此功能。</Typography.Text>
-            </>
-          )}
+            )}
+            {status.phase === 'checking' && (
+              <Space>
+                <Spin size="small" />
+                <Typography.Text>正在检查更新...</Typography.Text>
+              </Space>
+            )}
+            {status.phase === 'not-available' && (
+              <>
+                <Typography.Text strong>当前已是最新版本</Typography.Text>
+                <Typography.Text type="secondary">当前版本 {status.currentVersion}</Typography.Text>
+                <Button aria-label="重新检查" icon={<SyncOutlined />} onClick={checkForUpdates}>
+                  重新检查
+                </Button>
+              </>
+            )}
+            {status.phase === 'available' && (
+              <>
+                <Typography.Text>
+                  新版本 {status.availableVersion} 已可下载，当前版本为 {status.currentVersion}。
+                </Typography.Text>
+                {status.releaseNotes && (
+                  <Typography.Paragraph className="update-release-notes">
+                    {status.releaseNotes}
+                  </Typography.Paragraph>
+                )}
+                <Button
+                  aria-label="下载更新"
+                  icon={<DownloadOutlined />}
+                  type="primary"
+                  onClick={downloadUpdate}
+                >
+                  下载更新
+                </Button>
+              </>
+            )}
+            {status.phase === 'downloading' && (
+              <>
+                <Typography.Text>正在下载 {status.availableVersion}...</Typography.Text>
+                <Progress percent={Math.round(status.percent ?? 0)} status="active" />
+                <Typography.Text type="secondary">
+                  {formatBytes(status.transferred)} / {formatBytes(status.total)}
+                </Typography.Text>
+              </>
+            )}
+            {status.phase === 'downloaded' && (
+              <>
+                <Typography.Text strong>更新已下载完成</Typography.Text>
+                <Typography.Text>重启绽画以安装 {status.availableVersion}。</Typography.Text>
+                <Button
+                  aria-label="重启并安装"
+                  icon={<ReloadOutlined />}
+                  type="primary"
+                  onClick={installUpdate}
+                >
+                  重启并安装
+                </Button>
+              </>
+            )}
+            {status.phase === 'error' && (
+              <>
+                <Typography.Text type="danger">{status.message ?? '检查更新失败'}</Typography.Text>
+                <Button aria-label="重试" icon={<SyncOutlined />} onClick={checkForUpdates}>
+                  重试
+                </Button>
+              </>
+            )}
+            {status.phase === 'unsupported' && (
+              <>
+                <Typography.Text strong>开发环境不检查更新</Typography.Text>
+                <Typography.Text type="secondary">安装正式版本后即可使用此功能。</Typography.Text>
+              </>
+            )}
+          </section>
         </div>
       </Modal>
     </>

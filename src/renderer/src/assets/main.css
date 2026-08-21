@@ -76,11 +76,53 @@ body {
 .header-controls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .provider-select {
-  width: 220px;
+  width: 190px;
+}
+
+.about-modal-content {
+  min-width: 0;
+}
+
+.about-product {
+  padding: 4px 0;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+
+.about-product-logo {
+  width: 64px;
+  height: 64px;
+  display: block;
+  object-fit: contain;
+}
+
+.about-product-copy {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  gap: 3px;
+}
+
+.about-product-copy h3.ant-typography {
+  margin: 0;
+  font-family: 'Bloom Canvas Brand', serif;
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.about-version {
+  font-variant-numeric: tabular-nums;
+}
+
+.about-modal-content > .ant-divider {
+  margin: 20px 0;
 }
 
 .update-modal-content {
@@ -935,6 +977,15 @@ body {
   .header-controls,
   .provider-select {
     width: 100%;
+  }
+
+  .header-controls {
+    flex-wrap: wrap;
+  }
+
+  .header-controls > .ant-segmented,
+  .provider-select {
+    flex: 1 1 100%;
   }
 
   .workspace-grid {

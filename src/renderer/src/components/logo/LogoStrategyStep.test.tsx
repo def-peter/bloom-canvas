@@ -18,6 +18,7 @@ function renderStrategyStep(
         onChangeRenderStyle={vi.fn()}
         onEditStrategy={vi.fn()}
         onGenerate={vi.fn()}
+        onRefreshStale={vi.fn()}
         onReplaceStrategy={vi.fn()}
         {...overrides}
       />
@@ -35,13 +36,20 @@ describe('LogoStrategyStep', () => {
     expect(screen.queryByDisplayValue(/Create exactly one/)).not.toBeInTheDocument()
   })
 
-  test('blocks generation when selected prompts are stale', () => {
+  test('blocks strategy actions and offers recovery when selected prompts are stale', () => {
+    const onRefreshStale = vi.fn()
     renderStrategyStep({
-      promptPack: { ...logoTestPromptPack, sourceBriefVersion: 2 }
+      promptPack: { ...logoTestPromptPack, sourceBriefVersion: 2 },
+      onRefreshStale
     })
 
     expect(screen.getByRole('button', { name: '生成 Logo 初稿' })).toBeDisabled()
     expect(screen.getByText('上游信息已变化，请重新确认提示词')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '重新编译提示词' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '替换策略：连续创作路径' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: '重新编译提示词' }))
+    expect(onRefreshStale).toHaveBeenCalledOnce()
   })
 
   test('replaces only the requested strategy', () => {

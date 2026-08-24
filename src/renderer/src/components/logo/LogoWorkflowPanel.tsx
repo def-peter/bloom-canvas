@@ -63,6 +63,23 @@ function briefFromProject(project: LogoProject): LogoBrandBriefV2 {
   return briefValuesToV2(projectToBriefValues(project))
 }
 
+function strategyErrorMessage(error: unknown, fallback: string): string {
+  const message = error instanceof Error ? error.message : ''
+  if (
+    message.startsWith('策略模型连续两次返回无效结果') &&
+    /duplicates grammarId|similarity [\d.]+ above/.test(message)
+  ) {
+    return 'AI 连续两次生成了与现有方案重复的策略，请重试或重新生成整套创意策略'
+  }
+  if (message.startsWith('策略模型连续两次返回无效结果')) {
+    return 'AI 连续两次未能生成有效的创意策略，请重试'
+  }
+  if (/existingRevision\.briefVersion.*stale/.test(message)) {
+    return '品牌简报已变化，请重新生成整套创意策略'
+  }
+  return message || fallback
+}
+
 export function LogoWorkflowPanel({
   activeProvider,
   generations,
@@ -83,6 +100,7 @@ export function LogoWorkflowPanel({
   const [workingProject, setWorkingProject] = useState<LogoProject | null>(project)
   const [currentStep, setCurrentStep] = useState(stepIndex(project?.workflowStep))
   const [buildingStrategies, setBuildingStrategies] = useState(false)
+  const [refreshingStrategyContent, setRefreshingStrategyContent] = useState(false)
   const [loadingStrategyId, setLoadingStrategyId] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
   const [qualityRetrying, setQualityRetrying] = useState(false)
@@ -169,7 +187,7 @@ export function LogoWorkflowPanel({
       setCurrentStep(1)
       onError(null)
     } catch (error) {
-      onError(error instanceof Error ? error.message : '生成创意策略失败')
+      onError(strategyErrorMessage(error, '生成创意策略失败'))
     } finally {
       setBuildingStrategies(false)
     }
@@ -198,6 +216,27 @@ export function LogoWorkflowPanel({
       strategyPromptPack: merged,
       workflowStep: 'strategy'
     })
+  }
+
+  async function refreshStaleStrategyContent(): Promise<void> {
+    if (!workingProject?.designRevision) return
+    if (workingProject.designRevision.briefVersion !== (workingProject.briefVersion ?? 1)) {
+      await createStrategies(projectToBriefValues(workingProject))
+      return
+    }
+
+    setRefreshingStrategyContent(true)
+    try {
+      await rebuildPrompts(
+        workingProject.designRevision,
+        workingProject.designRevision.selectedStrategyIds
+      )
+      onError(null)
+    } catch (error) {
+      onError(strategyErrorMessage(error, '重新编译提示词失败'))
+    } finally {
+      setRefreshingStrategyContent(false)
+    }
   }
 
   function changePrompt(strategyId: string, finalPrompt: string): void {
@@ -262,7 +301,7 @@ export function LogoWorkflowPanel({
         replaceStrategyId: strategyId
       })
       .then((revision) => rebuildPrompts(revision, [strategyId]))
-      .catch((error) => onError(error instanceof Error ? error.message : '替换策略失败'))
+      .catch((error) => onError(strategyErrorMessage(error, '替换策略失败')))
       .finally(() => setLoadingStrategyId(null))
   }
 
@@ -552,6 +591,10 @@ export function LogoWorkflowPanel({
           <LogoStrategyStep
             loadingStrategyId={loadingStrategyId}
             promptPack={promptPack}
+            refreshingStale={buildingStrategies || refreshingStrategyContent}
+            requiresStrategyRegeneration={
+              revision.briefVersion !== (workingProject?.briefVersion ?? 1)
+            }
             revision={revision}
             stale={
               revision.briefVersion !== (workingProject?.briefVersion ?? 1) ||
@@ -563,6 +606,7 @@ export function LogoWorkflowPanel({
             onGenerate={() =>
               void generate({ candidatesPerStrategy: mode === 'quality-first' ? 2 : 1 })
             }
+            onRefreshStale={() => void refreshStaleStrategyContent()}
             onReplaceStrategy={replaceStrategy}
           />
         ) : null}

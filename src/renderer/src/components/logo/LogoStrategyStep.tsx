@@ -23,10 +23,13 @@ interface LogoStrategyStepProps {
   revision: LogoDesignRevision
   promptPack: LogoStrategyPromptPack
   stale?: boolean
+  refreshingStale?: boolean
+  requiresStrategyRegeneration?: boolean
   loadingStrategyId: string | null
   onChangePrompt: (strategyId: string, finalPrompt: string) => void
   onChangeRenderStyle: (strategyId: string, style: LogoRenderStyle) => void
   onEditStrategy: (strategyId: string, patch: Partial<LogoDesignStrategy>) => void
+  onRefreshStale: () => void
   onReplaceStrategy: (strategyId: string) => void
   onGenerate: () => void
 }
@@ -77,15 +80,19 @@ export function LogoStrategyStep({
   revision,
   promptPack,
   stale = false,
+  refreshingStale = false,
+  requiresStrategyRegeneration = false,
   loadingStrategyId,
   onChangePrompt,
   onChangeRenderStyle,
   onEditStrategy,
+  onRefreshStale,
   onReplaceStrategy,
   onGenerate
 }: LogoStrategyStepProps): React.JSX.Element {
   const [draft, setDraft] = useState<StrategyDraft | null>(null)
   const promptCurrent = !stale && isPromptPackCurrent(revision, promptPack)
+  const strategyActionsDisabled = !promptCurrent || Boolean(loadingStrategyId) || refreshingStale
   const strategies = revision.strategies.filter((strategy) =>
     revision.selectedStrategyIds.includes(strategy.id)
   )
@@ -123,7 +130,16 @@ export function LogoStrategyStep({
         </Typography.Text>
       </div>
       {!promptCurrent ? (
-        <Alert showIcon title="上游信息已变化，请重新确认提示词" type="warning" />
+        <Alert
+          action={
+            <Button loading={refreshingStale} size="small" type="primary" onClick={onRefreshStale}>
+              {requiresStrategyRegeneration ? '重新生成创意策略' : '重新编译提示词'}
+            </Button>
+          }
+          showIcon
+          title="上游信息已变化，请重新确认提示词"
+          type="warning"
+        />
       ) : null}
       <div className="logo-strategy-grid">
         {strategies.map((strategy) => {
@@ -139,6 +155,7 @@ export function LogoStrategyStep({
                   <Tooltip title="调整这个策略">
                     <Button
                       aria-label={`调整策略：${strategy.nameZh}`}
+                      disabled={strategyActionsDisabled}
                       icon={<EditOutlined />}
                       onClick={() => openEdit(strategy)}
                     />
@@ -146,6 +163,7 @@ export function LogoStrategyStep({
                   <Tooltip title="只替换这个策略">
                     <Button
                       aria-label={`替换策略：${strategy.nameZh}`}
+                      disabled={strategyActionsDisabled}
                       icon={<ReloadOutlined />}
                       loading={loadingStrategyId === strategy.id}
                       onClick={() => onReplaceStrategy(strategy.id)}
@@ -181,6 +199,7 @@ export function LogoStrategyStep({
               </label>
               <Select
                 id={`render-style-${strategy.id}`}
+                disabled={strategyActionsDisabled}
                 options={renderStyleOptions}
                 value={direction?.renderStyle ?? strategy.recommendedRenderStyles[0]}
                 onChange={(value) => onChangeRenderStyle(strategy.id, value)}
@@ -196,6 +215,7 @@ export function LogoStrategyStep({
                         <Input.TextArea
                           aria-label={`图片提示词：${strategy.nameZh}`}
                           autoSize={{ minRows: 7, maxRows: 14 }}
+                          disabled={strategyActionsDisabled}
                           value={direction.finalPrompt}
                           onChange={(event) => onChangePrompt(strategy.id, event.target.value)}
                         />
@@ -211,7 +231,7 @@ export function LogoStrategyStep({
       </div>
       <Button
         block
-        disabled={!promptCurrent || Boolean(loadingStrategyId)}
+        disabled={strategyActionsDisabled}
         size="large"
         type="primary"
         onClick={onGenerate}

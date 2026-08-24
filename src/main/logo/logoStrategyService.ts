@@ -138,6 +138,9 @@ function buildSystemPrompt(replacement: ReplacementContext | undefined): string 
         'Return one JSON object with exactly this top-level shape: { semantics, strategies }.',
         'strategies must contain exactly 1 entry for the requested replacement.',
         `The single strategy id must remain "${replacement.replaceStrategyId}".`,
+        'Choose grammarId only from the supplied grammarCards; grammars used by untouched strategies have been removed.',
+        'Do not repeat any grammarId, coreMetaphor, construction, or silhouette from untouchedStrategies.',
+        'The replacement must also differ meaningfully from the previous target strategy.',
         'Keep semantics consistent with existingSemantics; the service will preserve the existing semantics.'
       ]
     : [
@@ -160,8 +163,17 @@ function buildPromptPayload(
   normalizedBrief: NormalizedLogoBrief,
   replacement: ReplacementContext | undefined
 ): Record<string, unknown> {
+  const untouchedStrategies = replacement?.existingRevision.strategies.filter(
+    (strategy) => strategy.id !== replacement.replaceStrategyId
+  )
+  const forbiddenGrammarIds = untouchedStrategies?.map((strategy) => strategy.grammarId) ?? []
+  const forbiddenGrammarIdSet = new Set(forbiddenGrammarIds)
   const grammarCards = logoGrammarCards
-    .filter((card) => card.allowedLogoTypes.includes(normalizedBrief.brief.logoType))
+    .filter(
+      (card) =>
+        card.allowedLogoTypes.includes(normalizedBrief.brief.logoType) &&
+        !forbiddenGrammarIdSet.has(card.id)
+    )
     .map(toPromptGrammarCard)
 
   return {
@@ -172,7 +184,10 @@ function buildPromptPayload(
       ? {
           replaceStrategyId: replacement.replaceStrategyId,
           existingSemantics: replacement.existingRevision.semantics,
-          existingStrategies: replacement.existingRevision.strategies
+          existingStrategies: replacement.existingRevision.strategies,
+          previousTargetStrategy: replacement.existingRevision.strategies[replacement.targetIndex],
+          untouchedStrategies,
+          forbiddenGrammarIds
         }
       : {})
   }

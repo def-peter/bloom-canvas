@@ -454,6 +454,31 @@ describe('LogoStrategyService', () => {
     expect(strategiesContract.items?.properties).not.toHaveProperty('version')
   })
 
+  test('excludes untouched strategy grammars from a replacement request', async () => {
+    const existingRevision = replacementRevision()
+    const responses = responsesWith(validReplacementOutput())
+
+    await new LogoStrategyService(responses).generate(
+      logoTestProvider,
+      'sk-test',
+      input({ existingRevision, replaceStrategyId: 'strategy-frame' })
+    )
+
+    const [, userMessage] = requestMessages(responses)
+    const payload = JSON.parse(textContent(userMessage)) as {
+      forbiddenGrammarIds: string[]
+      grammarCards: Array<{ id: string }>
+    }
+    const untouchedGrammarIds: string[] = existingRevision.strategies
+      .filter((strategy) => strategy.id !== 'strategy-frame')
+      .map((strategy) => strategy.grammarId)
+
+    expect(payload.forbiddenGrammarIds).toEqual(untouchedGrammarIds)
+    expect(
+      payload.grammarCards.filter((card) => untouchedGrammarIds.includes(card.id))
+    ).toHaveLength(0)
+  })
+
   test('rejects replacement without an existing revision before calling the API', async () => {
     const responses = responsesWith(validReplacementOutput())
 

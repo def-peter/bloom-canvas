@@ -266,19 +266,130 @@ describe('LogoWorkflowPanel', () => {
     expect(bloomCanvasClient.logoReview.run).toHaveBeenCalledTimes(6)
   })
 
-  test('does not use a stale revision after the brief changes', () => {
+  test('regenerates the full strategy set after the brief changes', async () => {
+    const staleProject: LogoProject = {
+      ...project,
+      briefVersion: 2,
+      workflowStep: 'strategy',
+      designRevision: logoTestRevision,
+      strategyPromptPack: logoTestPromptPack
+    }
+    const refreshedRevision = { ...logoTestRevision, briefVersion: 2 }
+    const refreshedPromptPack = {
+      ...logoTestPromptPack,
+      sourceBriefVersion: 2,
+      directions: logoTestPromptPack.directions.map((direction) => ({
+        ...direction,
+        sourceBriefVersion: 2
+      }))
+    }
+    vi.mocked(bloomCanvasClient.logoProjects.save).mockImplementation(async (input) => ({
+      ...staleProject,
+      ...input,
+      id: input.id ?? staleProject.id,
+      briefVersion: 2,
+      promptVersion: 1,
+      selectedCandidateId:
+        input.selectedCandidateId === null
+          ? undefined
+          : (input.selectedCandidateId ?? staleProject.selectedCandidateId),
+      generationIds: staleProject.generationIds,
+      favoriteVariantIds: staleProject.favoriteVariantIds,
+      createdAt: staleProject.createdAt,
+      updatedAt: staleProject.updatedAt
+    }))
+    vi.mocked(bloomCanvasClient.logoStrategy.generate).mockResolvedValue(refreshedRevision)
+    vi.mocked(bloomCanvasClient.logoPrompt.buildStrategy).mockResolvedValue(refreshedPromptPack)
+
     renderWorkflow({
+      project: staleProject
+    })
+
+    expect(screen.getByText('上游信息已变化，请重新确认提示词')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '生成 Logo 初稿' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: '重新生成创意策略' }))
+
+    await waitFor(() =>
+      expect(bloomCanvasClient.logoStrategy.generate).toHaveBeenCalledWith(
+        expect.objectContaining({ briefVersion: 2 })
+      )
+    )
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '生成 Logo 初稿' })).toBeEnabled()
+    )
+  })
+
+  test('recompiles every prompt after only the prompt version changes', async () => {
+    const staleProject: LogoProject = {
+      ...project,
+      promptVersion: 2,
+      workflowStep: 'strategy',
+      designRevision: logoTestRevision,
+      strategyPromptPack: logoTestPromptPack
+    }
+    const refreshedPromptPack = {
+      ...logoTestPromptPack,
+      sourcePromptVersion: 2,
+      directions: logoTestPromptPack.directions.map((direction) => ({
+        ...direction,
+        sourcePromptVersion: 2
+      }))
+    }
+    vi.mocked(bloomCanvasClient.logoProjects.save).mockImplementation(async (input) => ({
+      ...staleProject,
+      ...input,
+      id: input.id ?? staleProject.id,
+      briefVersion: 1,
+      promptVersion: 2,
+      selectedCandidateId:
+        input.selectedCandidateId === null
+          ? undefined
+          : (input.selectedCandidateId ?? staleProject.selectedCandidateId),
+      generationIds: staleProject.generationIds,
+      favoriteVariantIds: staleProject.favoriteVariantIds,
+      createdAt: staleProject.createdAt,
+      updatedAt: staleProject.updatedAt
+    }))
+    vi.mocked(bloomCanvasClient.logoPrompt.buildStrategy).mockResolvedValue(refreshedPromptPack)
+
+    renderWorkflow({ project: staleProject })
+    fireEvent.click(screen.getByRole('button', { name: '重新编译提示词' }))
+
+    await waitFor(() =>
+      expect(bloomCanvasClient.logoPrompt.buildStrategy).toHaveBeenCalledWith(
+        expect.objectContaining({ promptVersion: 2, revision: logoTestRevision })
+      )
+    )
+    expect(bloomCanvasClient.logoStrategy.generate).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '生成 Logo 初稿' })).toBeEnabled()
+    )
+  })
+
+  test('shows a user-facing message when a replacement remains duplicated after repair', async () => {
+    const onError = vi.fn()
+    vi.mocked(bloomCanvasClient.logoStrategy.generate).mockRejectedValue(
+      new Error(
+        '策略模型连续两次返回无效结果：strategy "replacement" duplicates grammarId "continuous-path"'
+      )
+    )
+    renderWorkflow({
+      onError,
       project: {
         ...project,
-        briefVersion: 2,
         workflowStep: 'strategy',
         designRevision: logoTestRevision,
         strategyPromptPack: logoTestPromptPack
       }
     })
 
-    expect(screen.getByText('上游信息已变化，请重新确认提示词')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '生成 Logo 初稿' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: '替换策略：连续创作路径' }))
+
+    await waitFor(() =>
+      expect(onError).toHaveBeenCalledWith(
+        'AI 连续两次生成了与现有方案重复的策略，请重试或重新生成整套创意策略'
+      )
+    )
   })
 
   test('opens the in-workflow refinement controls for the selected candidate', async () => {

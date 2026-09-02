@@ -367,6 +367,13 @@ export const importAssetSchema = z.object({
   filePath: z.string().min(1)
 })
 
+export const importAssetDataSchema = z.object({
+  bytes: z.instanceof(Uint8Array).refine((bytes) => bytes.byteLength <= 25 * 1024 * 1024, {
+    message: '剪贴板图片不能超过 25 MB'
+  }),
+  mimeType: z.enum(['image/png', 'image/jpeg', 'image/webp'])
+})
+
 export const exportAssetSchema = z.object({
   assetId: z.string().min(1),
   targetDirectory: z.string().min(1).optional()

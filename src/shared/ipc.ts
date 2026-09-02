@@ -16,6 +16,7 @@ import type {
   CreateGenerationInput,
   ExportAssetInput,
   GenerationRecord,
+  ImportAssetDataInput,
   ImportAssetInput,
   LogoProject,
   LogoProjectId,
@@ -33,6 +34,7 @@ export const IPC_CHANNELS = {
   settingsGet: 'settings:get',
   settingsSave: 'settings:save',
   assetImport: 'asset:import',
+  assetImportData: 'asset:importData',
   assetExport: 'asset:export',
   assetGetMany: 'asset:getMany',
   generationCreate: 'generation:create',
@@ -103,6 +105,7 @@ export interface BloomCanvasApi {
   assets: {
     getPathForFile: (file: unknown) => string
     import: (input: ImportAssetInput) => Promise<AppResult<Asset>>
+    importData: (input: ImportAssetDataInput) => Promise<AppResult<Asset>>
     export: (input: ExportAssetInput) => Promise<AppResult<string>>
     getMany: (assetIds: string[]) => Promise<AppResult<Asset[]>>
   }

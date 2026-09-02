@@ -1,6 +1,6 @@
 {
   "name": "bloom-canvas",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "private": true,
   "description": "An open-source desktop workspace for AI image creation, prompt refinement, and structured logo exploration.",
   "keywords": [

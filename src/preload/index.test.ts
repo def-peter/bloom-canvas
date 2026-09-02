@@ -73,6 +73,18 @@ describe('preload bridge', () => {
     )
   })
 
+  it('exposes in-memory image import for pasted files', async () => {
+    const [ipcSource, preloadSource] = await Promise.all([
+      readFile(join(process.cwd(), 'src/shared/ipc.ts'), 'utf8'),
+      readFile(join(process.cwd(), 'src/preload/index.ts'), 'utf8')
+    ])
+
+    expect(ipcSource).toContain("assetImportData: 'asset:importData'")
+    expect(preloadSource).toContain(
+      'importData: (input) => ipcRenderer.invoke(IPC_CHANNELS.assetImportData, input)'
+    )
+  })
+
   it('exposes logo preview and review APIs', async () => {
     const [ipcSource, preloadSource] = await Promise.all([
       readFile(join(process.cwd(), 'src/shared/ipc.ts'), 'utf8'),

@@ -1,11 +1,17 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GenerationRecord, ProviderConfig } from '../../../shared/types'
+import type { Asset, GenerationRecord, ProviderConfig } from '../../../shared/types'
 import { bloomCanvasClient } from '../api/bloomCanvasClient'
+import '../assets/main.css'
 import { CreationPanel } from './CreationPanel'
 
 vi.mock('../api/bloomCanvasClient', () => ({
   bloomCanvasClient: {
+    assets: {
+      getPathForFile: vi.fn(),
+      import: vi.fn(),
+      importData: vi.fn()
+    },
     generations: {
       create: vi.fn()
     }
@@ -21,6 +27,19 @@ const provider: ProviderConfig = {
   hasApiKey: true,
   createdAt: '2026-07-09T00:00:00.000Z',
   updatedAt: '2026-07-09T00:00:00.000Z'
+}
+
+const referenceAsset: Asset = {
+  id: 'reference-1',
+  type: 'reference',
+  filePath: '/tmp/reference.png',
+  thumbnailPath: '/tmp/reference-thumb.webp',
+  mimeType: 'image/png',
+  width: 24,
+  height: 16,
+  size: 128,
+  sha256: 'reference-hash',
+  createdAt: '2026-07-09T00:00:00.000Z'
 }
 
 const failedRecord: GenerationRecord = {
@@ -90,6 +109,75 @@ describe('CreationPanel', () => {
 
     expect(screen.getByText('1536 x 864')).toBeInTheDocument()
     expect(screen.getByText('自定义')).toBeInTheDocument()
+  })
+
+  it('keeps the reference image drop zone compact', () => {
+    renderPanel()
+
+    const dropZone = screen.getByText('点击、拖拽或粘贴图片').closest('.ant-upload-drag')
+
+    expect(dropZone).not.toBeNull()
+    expect(window.getComputedStyle(dropZone!).height).toBe('64px')
+  })
+
+  it('uses consistent spacing between creation form sections', () => {
+    const { container } = renderPanel()
+
+    const form = container.querySelector('.creation-form')
+
+    expect(form).not.toBeNull()
+    expect(window.getComputedStyle(form!).gap).toBe('14px')
+  })
+
+  it('keeps independent parameter controls horizontally separated', () => {
+    const { container } = renderPanel()
+
+    const parameterRows = container.querySelectorAll('.creation-parameter-row')
+
+    expect(parameterRows).toHaveLength(2)
+    parameterRows.forEach((row) => {
+      const styles = window.getComputedStyle(row)
+      expect(styles.display).toBe('grid')
+      expect(styles.columnGap).toBe('12px')
+    })
+  })
+
+  it('imports a dragged local image from its file path', async () => {
+    vi.mocked(bloomCanvasClient.assets.getPathForFile).mockReturnValue('/tmp/reference.png')
+    vi.mocked(bloomCanvasClient.assets.import).mockResolvedValue(referenceAsset)
+    const onReferenceAssetsChange = vi.fn()
+    renderPanel({ onReferenceAssetsChange })
+    const file = new File(['image'], 'reference.png', { type: 'image/png' })
+    const dropZone = screen.getByText('点击、拖拽或粘贴图片').closest('.ant-upload-btn')
+
+    fireEvent.drop(dropZone!, { dataTransfer: { files: [file], items: [] } })
+
+    await waitFor(() =>
+      expect(bloomCanvasClient.assets.import).toHaveBeenCalledWith({
+        filePath: '/tmp/reference.png'
+      })
+    )
+    expect(onReferenceAssetsChange).toHaveBeenCalledWith([referenceAsset])
+  })
+
+  it('imports an image pasted from the clipboard without requiring a file path', async () => {
+    vi.mocked(bloomCanvasClient.assets.getPathForFile).mockReturnValue('')
+    vi.mocked(bloomCanvasClient.assets.importData).mockResolvedValue(referenceAsset)
+    const onReferenceAssetsChange = vi.fn()
+    renderPanel({ onReferenceAssetsChange })
+    const file = new File(['clipboard image'], 'clipboard.png', { type: 'image/png' })
+    Object.defineProperty(file, 'arrayBuffer', {
+      value: vi.fn().mockResolvedValue(new TextEncoder().encode('clipboard image').buffer)
+    })
+
+    fireEvent.paste(document, { clipboardData: { files: [file], items: [] } })
+
+    await waitFor(() => expect(bloomCanvasClient.assets.importData).toHaveBeenCalledOnce())
+    expect(bloomCanvasClient.assets.importData).toHaveBeenCalledWith({
+      bytes: expect.any(Uint8Array),
+      mimeType: 'image/png'
+    })
+    expect(onReferenceAssetsChange).toHaveBeenCalledWith([referenceAsset])
   })
 
   it('generates with a custom controlled image size', async () => {

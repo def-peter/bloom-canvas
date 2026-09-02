@@ -170,6 +170,7 @@ function installBloomCanvasApi(overrides: Partial<BloomCanvasApi> = {}): BloomCa
     assets: {
       getPathForFile: vi.fn(),
       import: vi.fn(),
+      importData: vi.fn(),
       export: vi.fn(),
       getMany: vi.fn().mockResolvedValue({ ok: true, data: [] })
     },
@@ -436,6 +437,7 @@ describe('AppShell', () => {
       assets: {
         getPathForFile: vi.fn(),
         import: vi.fn(),
+        importData: vi.fn(),
         export: vi.fn(),
         getMany: vi.fn().mockResolvedValue({ ok: true, data: [projectReferenceAsset] })
       },

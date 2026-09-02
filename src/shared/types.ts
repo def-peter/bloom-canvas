@@ -241,6 +241,11 @@ export interface ImportAssetInput {
   filePath: string
 }
 
+export interface ImportAssetDataInput {
+  bytes: Uint8Array
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp'
+}
+
 export interface ExportAssetInput {
   assetId: AssetId
   targetDirectory?: string

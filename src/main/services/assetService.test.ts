@@ -43,4 +43,38 @@ describe('AssetService', () => {
 
     expect(assets.map((asset) => asset.id)).toEqual([reference.id])
   })
+
+  test('imports a clipboard image buffer as a reference asset', async () => {
+    rootDir = await mkdtemp(join(tmpdir(), 'bloom-assets-'))
+    const paths = pathsFor(rootDir)
+    const service = new AssetService(paths, new StorageService(paths))
+    const imageBuffer = await sharp({
+      create: { width: 24, height: 16, channels: 3, background: '#1677ff' }
+    })
+      .png()
+      .toBuffer()
+
+    const reference = await service.importReferenceBuffer(imageBuffer, 'image/png')
+
+    expect(reference.type).toBe('reference')
+    expect(reference.mimeType).toBe('image/png')
+    expect(reference.width).toBe(24)
+    expect(reference.height).toBe(16)
+    expect(reference.size).toBe(imageBuffer.byteLength)
+  })
+
+  test('rejects clipboard bytes that do not match the declared image format', async () => {
+    rootDir = await mkdtemp(join(tmpdir(), 'bloom-assets-'))
+    const paths = pathsFor(rootDir)
+    const service = new AssetService(paths, new StorageService(paths))
+    const jpegBuffer = await sharp({
+      create: { width: 8, height: 8, channels: 3, background: '#ffffff' }
+    })
+      .jpeg()
+      .toBuffer()
+
+    await expect(service.importReferenceBuffer(jpegBuffer, 'image/png')).rejects.toThrow(
+      'does not match'
+    )
+  })
 })

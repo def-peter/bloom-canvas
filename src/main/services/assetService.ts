@@ -15,6 +15,18 @@ const MIME_BY_EXT: Record<string, string> = {
   '.webp': 'image/webp'
 }
 
+const EXT_BY_MIME = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/webp': '.webp'
+} as const
+
+const MIME_BY_SHARP_FORMAT: Record<string, keyof typeof EXT_BY_MIME> = {
+  png: 'image/png',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp'
+}
+
 export class AssetService {
   constructor(
     private readonly paths: AppPaths,
@@ -23,6 +35,25 @@ export class AssetService {
 
   async importReference(filePath: string): Promise<Asset> {
     return this.saveAssetFromFile('reference', filePath)
+  }
+
+  async importReferenceBuffer(buffer: Buffer, mimeType: keyof typeof EXT_BY_MIME): Promise<Asset> {
+    let detectedMimeType: keyof typeof EXT_BY_MIME | undefined
+    try {
+      const metadata = await sharp(buffer).metadata()
+      detectedMimeType = metadata.format ? MIME_BY_SHARP_FORMAT[metadata.format] : undefined
+    } catch {
+      throw new Error('Invalid image file')
+    }
+    if (detectedMimeType !== mimeType) {
+      throw new Error('Image file format does not match its MIME type')
+    }
+
+    const id = nanoid()
+    const filePath = join(this.paths.referencesDir, `${id}${EXT_BY_MIME[mimeType]}`)
+    await mkdir(this.paths.referencesDir, { recursive: true })
+    await writeFile(filePath, buffer)
+    return this.saveAssetAtPath(id, 'reference', filePath)
   }
 
   async getMany(assetIds: AssetId[]): Promise<Asset[]> {

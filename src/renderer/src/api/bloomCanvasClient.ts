@@ -53,6 +53,8 @@ export const bloomCanvasClient = {
     getPathForFile: (file: File) => window.bloomCanvas.assets.getPathForFile(file),
     import: (input: Parameters<typeof window.bloomCanvas.assets.import>[0]) =>
       unwrapResult(window.bloomCanvas.assets.import(input)),
+    importData: (input: Parameters<typeof window.bloomCanvas.assets.importData>[0]) =>
+      unwrapResult(window.bloomCanvas.assets.importData(input)),
     export: (input: Parameters<typeof window.bloomCanvas.assets.export>[0]) =>
       unwrapResult(window.bloomCanvas.assets.export(input)),
     getMany: (assetIds: string[]) => unwrapResult(window.bloomCanvas.assets.getMany(assetIds))

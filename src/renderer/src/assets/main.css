@@ -438,8 +438,46 @@ body {
   flex: none;
 }
 
-.creation-panel .ant-form-item {
-  margin-bottom: 14px;
+.creation-panel .creation-form .ant-form-item {
+  margin-bottom: 0;
+}
+
+.reference-upload.ant-upload-wrapper .ant-upload-drag {
+  border-radius: 8px;
+}
+
+.reference-upload.ant-upload-wrapper .ant-upload-drag .ant-upload {
+  padding: 8px 12px;
+}
+
+.reference-upload-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.reference-upload-content > .anticon {
+  flex: 0 0 auto;
+  color: var(--bc-primary);
+  font-size: 20px;
+}
+
+.reference-upload-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.reference-upload.ant-upload-wrapper .reference-upload-copy .ant-upload-text {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.reference-upload.ant-upload-wrapper .reference-upload-copy .ant-upload-hint {
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .image-size-control {
@@ -460,7 +498,6 @@ body {
 
 .reference-summary {
   margin-top: 10px;
-  margin-bottom: 14px;
   display: grid;
   gap: 8px;
 }

@@ -7,6 +7,7 @@ import {
   buildLogoPromptPackSchema,
   createGenerationSchema,
   exportAssetSchema,
+  importAssetDataSchema,
   importAssetSchema,
   generateLogoStrategiesSchema,
   promptOptimizeSchema,
@@ -98,6 +99,15 @@ export function registerIpcHandlers(): void {
     try {
       const parsed = importAssetSchema.parse(input)
       return ok(await assets.importReference(parsed.filePath))
+    } catch (error) {
+      return err(toErrorPayload(error))
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.assetImportData, async (_event, input) => {
+    try {
+      const parsed = importAssetDataSchema.parse(input)
+      return ok(await assets.importReferenceBuffer(Buffer.from(parsed.bytes), parsed.mimeType))
     } catch (error) {
       return err(toErrorPayload(error))
     }

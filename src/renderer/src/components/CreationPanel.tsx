@@ -1,6 +1,12 @@
-import { BulbOutlined, CloseOutlined, DeleteOutlined, FileImageOutlined } from '@ant-design/icons'
+import {
+  BulbOutlined,
+  CloseOutlined,
+  DeleteOutlined,
+  FileImageOutlined,
+  InboxOutlined
+} from '@ant-design/icons'
 import { Button, Form, Image, Input, InputNumber, Select, Space, Upload, Typography } from 'antd'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { assetProtocolUrl, thumbnailProtocolUrl } from '../../../shared/assetProtocol'
 import { getImageSizeModelError } from '../../../shared/imageSize'
 import type {
@@ -8,6 +14,7 @@ import type {
   Asset,
   GenerationParameters,
   GenerationRecord,
+  ImportAssetDataInput,
   ProviderConfig
 } from '../../../shared/types'
 import { bloomCanvasClient } from '../api/bloomCanvasClient'
@@ -34,6 +41,32 @@ interface CreationFormValues {
   outputFormat: GenerationParameters['outputFormat']
 }
 
+const MAX_REFERENCE_IMAGES = 8
+const PARAMETER_ROW_STYLE: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  columnGap: 12
+}
+const SIZE_PARAMETER_ROW_STYLE: React.CSSProperties = {
+  ...PARAMETER_ROW_STYLE,
+  gridTemplateColumns: 'minmax(0, 1fr) 96px'
+}
+const MIME_BY_IMAGE_EXTENSION: Record<string, ImportAssetDataInput['mimeType']> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp'
+}
+
+function getReferenceImageMimeType(file: File): ImportAssetDataInput['mimeType'] | null {
+  if (
+    Object.values(MIME_BY_IMAGE_EXTENSION).includes(file.type as ImportAssetDataInput['mimeType'])
+  ) {
+    return file.type as ImportAssetDataInput['mimeType']
+  }
+  return MIME_BY_IMAGE_EXTENSION[file.name.split('.').pop()?.toLowerCase() ?? ''] ?? null
+}
+
 export function CreationPanel({
   activeProvider,
   referenceAssets,
@@ -47,12 +80,51 @@ export function CreationPanel({
   const [form] = Form.useForm<CreationFormValues>()
   const [uploading, setUploading] = useState(false)
   const [optimizing, setOptimizing] = useState(false)
+  const handledUploadBatches = useRef(new WeakSet<object>())
 
-  function addReferenceAsset(asset: Asset): void {
-    const nextAssets = referenceAssets.some((item) => item.id === asset.id)
-      ? referenceAssets
-      : [...referenceAssets, asset]
-    onReferenceAssetsChange(nextAssets)
+  async function importReferenceFiles(files: File[]): Promise<void> {
+    const availableCount = MAX_REFERENCE_IMAGES - referenceAssets.length
+    const acceptedFiles = files
+      .map((file) => ({ file, mimeType: getReferenceImageMimeType(file) }))
+      .filter(
+        (item): item is { file: File; mimeType: ImportAssetDataInput['mimeType'] } =>
+          item.mimeType !== null
+      )
+      .slice(0, availableCount)
+
+    if (acceptedFiles.length === 0) {
+      onError(`参考图最多支持 ${MAX_REFERENCE_IMAGES} 张`)
+      return
+    }
+
+    setUploading(true)
+    const importedAssets: Asset[] = []
+    try {
+      for (const { file, mimeType } of acceptedFiles) {
+        const filePath = bloomCanvasClient.assets.getPathForFile(file)
+        const asset = filePath
+          ? await bloomCanvasClient.assets.import({ filePath })
+          : await bloomCanvasClient.assets.importData({
+              bytes: new Uint8Array(await file.arrayBuffer()),
+              mimeType
+            })
+        importedAssets.push(asset)
+      }
+
+      onReferenceAssetsChange([...referenceAssets, ...importedAssets])
+      onError(
+        files.length > acceptedFiles.length
+          ? `参考图最多支持 ${MAX_REFERENCE_IMAGES} 张，已忽略其余图片`
+          : null
+      )
+    } catch (error) {
+      if (importedAssets.length > 0) {
+        onReferenceAssetsChange([...referenceAssets, ...importedAssets])
+      }
+      onError(error instanceof Error ? error.message : '导入参考图失败')
+    } finally {
+      setUploading(false)
+    }
   }
 
   function removeReferenceAsset(assetId: string): void {
@@ -133,6 +205,7 @@ export function CreationPanel({
         <FileImageOutlined />
       </div>
       <Form
+        className="creation-form"
         form={form}
         initialValues={{
           size: settings?.defaultSize ?? '1024x1024',
@@ -141,6 +214,7 @@ export function CreationPanel({
           outputFormat: settings?.defaultOutputFormat ?? 'png'
         }}
         layout="vertical"
+        style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
       >
         <Form.Item
           label="提示词"
@@ -165,63 +239,70 @@ export function CreationPanel({
             placeholder="优化结果会显示在这里，可继续编辑"
           />
         </Form.Item>
-        <Upload
-          accept="image/png,image/jpeg,image/webp"
-          beforeUpload={async (file) => {
-            const filePath = bloomCanvasClient.assets.getPathForFile(file)
-            if (!filePath) {
-              onError('无法读取参考图路径，请在桌面应用中重新选择文件')
-              return false
-            }
-            setUploading(true)
-            try {
-              const asset = await bloomCanvasClient.assets.import({ filePath })
-              addReferenceAsset(asset)
-            } catch (error) {
-              onError(error instanceof Error ? error.message : '导入参考图失败')
-            } finally {
-              setUploading(false)
-            }
-            return false
-          }}
-          maxCount={8}
-          multiple
-        >
-          <Button block loading={uploading}>
-            添加参考图
-          </Button>
-        </Upload>
-        {referenceAssets.length > 0 ? (
-          <div className="reference-summary">
-            <div className="reference-summary-header">
-              <Typography.Text strong>参考图 {referenceAssets.length} 张</Typography.Text>
-              <Button size="small" type="link" onClick={() => onReferenceAssetsChange([])}>
-                清空参考图
-              </Button>
+        <div className="reference-upload-section">
+          <Upload.Dragger
+            accept="image/png,image/jpeg,image/webp"
+            beforeUpload={(_, fileList) => {
+              if (!handledUploadBatches.current.has(fileList)) {
+                handledUploadBatches.current.add(fileList)
+                void importReferenceFiles(fileList)
+              }
+              return Upload.LIST_IGNORE
+            }}
+            className="reference-upload"
+            disabled={uploading || referenceAssets.length >= MAX_REFERENCE_IMAGES}
+            height={64}
+            maxCount={MAX_REFERENCE_IMAGES}
+            multiple
+            pastable
+            showUploadList={false}
+          >
+            <div className="reference-upload-content">
+              <InboxOutlined spin={uploading} />
+              <div className="reference-upload-copy">
+                <span className="ant-upload-text">
+                  {uploading
+                    ? '正在导入参考图'
+                    : referenceAssets.length >= MAX_REFERENCE_IMAGES
+                      ? '已添加 8 张参考图'
+                      : '点击、拖拽或粘贴图片'}
+                </span>
+                <span className="ant-upload-hint">PNG · JPEG · WEBP · 最多 8 张</span>
+              </div>
             </div>
-            <div className="reference-preview-grid">
-              {referenceAssets.map((asset, index) => (
-                <div className="reference-preview-item" key={asset.id}>
-                  <Image
-                    alt={`参考图 ${index + 1}`}
-                    preview={{ src: assetProtocolUrl(asset.id) }}
-                    src={thumbnailProtocolUrl(asset.id)}
-                  />
-                  <Button
-                    aria-label={`移除参考图 ${index + 1}`}
-                    className="reference-remove-button"
-                    icon={<CloseOutlined />}
-                    shape="circle"
-                    size="small"
-                    onClick={() => removeReferenceAsset(asset.id)}
-                  />
-                </div>
-              ))}
+          </Upload.Dragger>
+          {referenceAssets.length > 0 ? (
+            <div className="reference-summary">
+              <div className="reference-summary-header">
+                <Typography.Text strong>参考图 {referenceAssets.length} 张</Typography.Text>
+                <Button size="small" type="link" onClick={() => onReferenceAssetsChange([])}>
+                  清空参考图
+                </Button>
+              </div>
+              <div className="reference-preview-grid">
+                {referenceAssets.map((asset, index) => (
+                  <div className="reference-preview-item" key={asset.id}>
+                    <Image
+                      alt={`参考图 ${index + 1}`}
+                      preview={{ src: assetProtocolUrl(asset.id) }}
+                      src={thumbnailProtocolUrl(asset.id)}
+                    />
+                    <Button
+                      aria-label={`移除参考图 ${index + 1}`}
+                      className="reference-remove-button"
+                      icon={<CloseOutlined />}
+                      shape="circle"
+                      size="small"
+                      onClick={() => removeReferenceAsset(asset.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+              <Typography.Text type="secondary">生成时会按提示词决定参考方式</Typography.Text>
             </div>
-            <Typography.Text type="secondary">生成时会按提示词决定参考方式</Typography.Text>
-          </div>
-        ) : null}
-        <Space.Compact block>
+          ) : null}
+        </div>
+        <div className="creation-parameter-row" style={SIZE_PARAMETER_ROW_STYLE}>
           <Form.Item
             label="尺寸"
             name="size"
@@ -233,16 +314,15 @@ export function CreationPanel({
                 }
               }
             ]}
-            style={{ flex: 1 }}
           >
             <ImageSizeControl imageModel={activeProvider?.imageModel} />
           </Form.Item>
-          <Form.Item label="数量" name="count" style={{ width: 96 }}>
+          <Form.Item label="数量" name="count">
             <InputNumber max={4} min={1} style={{ width: '100%' }} />
           </Form.Item>
-        </Space.Compact>
-        <Space.Compact block>
-          <Form.Item label="质量" name="quality" style={{ flex: 1 }}>
+        </div>
+        <div className="creation-parameter-row" style={PARAMETER_ROW_STYLE}>
+          <Form.Item label="质量" name="quality">
             <Select
               options={[
                 { label: '标准', value: 'standard' },
@@ -250,7 +330,7 @@ export function CreationPanel({
               ]}
             />
           </Form.Item>
-          <Form.Item label="格式" name="outputFormat" style={{ flex: 1 }}>
+          <Form.Item label="格式" name="outputFormat">
             <Select
               options={[
                 { label: 'PNG', value: 'png' },
@@ -259,7 +339,7 @@ export function CreationPanel({
               ]}
             />
           </Form.Item>
-        </Space.Compact>
+        </div>
         <Space orientation="vertical" style={{ width: '100%' }}>
           <Button
             autoInsertSpace={false}

@@ -84,6 +84,16 @@ describe('UpdateService', () => {
     expect(broadcast).toHaveBeenCalledWith(expect.objectContaining({ phase: 'downloaded' }))
   })
 
+  it('converts GitHub HTML release notes to plain text', () => {
+    const { updater, service } = createService()
+    const releaseNotes =
+      '<p><strong>Full Changelog</strong>: <a class="commit-link" href="https://github.com/def-peter/bloom-canvas/compare/v1.1.4...v1.1.5"><tt>v1.1.4...v1.1.5</tt></a></p>'
+
+    updater.emit('update-available', { ...updateInfo('1.1.5'), releaseNotes })
+
+    expect(service.getStatus().releaseNotes).toBe('Full Changelog: v1.1.4...v1.1.5')
+  })
+
   it('only installs a downloaded update', () => {
     const { updater, service } = createService()
 

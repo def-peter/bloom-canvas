@@ -1,4 +1,5 @@
 import type { ProgressInfo, UpdateDownloadedEvent, UpdateInfo } from 'electron-updater'
+import { convert } from 'html-to-text'
 import type { AppUpdateStatus } from '../../shared/ipc'
 
 export interface UpdateAdapter {
@@ -25,12 +26,19 @@ interface UpdateServiceOptions {
 }
 
 function releaseNotesText(releaseNotes: UpdateInfo['releaseNotes']): string | undefined {
-  if (typeof releaseNotes === 'string') return releaseNotes
-  if (!releaseNotes?.length) return undefined
-  return releaseNotes
-    .map((note) => note.note)
+  const notes =
+    typeof releaseNotes === 'string' ? [releaseNotes] : releaseNotes?.map((note) => note.note)
+  const text = notes
+    ?.filter((note): note is string => Boolean(note))
+    .map((note) =>
+      convert(note, {
+        wordwrap: false,
+        selectors: [{ selector: 'a', options: { ignoreHref: true } }]
+      }).trim()
+    )
     .filter(Boolean)
     .join('\n\n')
+  return text || undefined
 }
 
 export class UpdateService {
